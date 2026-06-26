@@ -1,0 +1,26 @@
+services:
+  # ============================================
+  # Основной сервис разработки (Dev Container)
+  # ============================================
+  f5tts-web-app:
+    build:
+      context: .
+      args:
+        USER_ID: ${USER_ID:-1000}
+        GROUP_ID: ${GROUP_ID:-1000}
+        USERNAME: ${USERNAME:-user}
+    container_name: f5tts_fastapi_dev_conteiner
+    volumes:
+      - ./workspace:/workspace
+      - ./.docker/nvim:/home/${USERNAME}/.config/nvim
+      - f5tts-home:/home/${USERNAME}
+    tty: true
+    stdin_open: true
+    command: ["zsh"]
+
+# ============================================
+# Тома для сохранения данных
+# ============================================
+volumes:
+  f5tts-home:
+
