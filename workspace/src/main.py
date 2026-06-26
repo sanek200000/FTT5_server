@@ -1,6 +1,15 @@
+import sys
+from pathlib import Path
+from typing import Optional
 from fastapi import FastAPI
 
+sys.path.append(str(Path(__file__).parent.parent))
+
+from src.model import TTSModel
+
 app = FastAPI()
+tts: Optional[TTSModel] = None
+# tts = TTSModel()
 
 
 @app.get("/")

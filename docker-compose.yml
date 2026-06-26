@@ -15,6 +15,7 @@ services:
     volumes:
       - ./workspace:/workspace
       - ./.docker/nvim:/home/${USERNAME}/.config/nvim
+      - /mnt/MyDownloads/000temp/localization_KCD2/workspace/models/:/workspace/models
       - f5tts-home:/home/${USERNAME}
     tty: true
     stdin_open: true

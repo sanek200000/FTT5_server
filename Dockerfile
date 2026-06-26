@@ -27,7 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Установка Poetry через pip
 RUN pip install --no-cache-dir "poetry>=1.7.0" && \
   poetry config virtualenvs.create true && \
-  poetry config virtualenvs.in-project true
+  poetry config virtualenvs.in-project true && \
+  poetry config virtualenvs.options.always-copy true
 
 
 # Настройка окружения
@@ -79,7 +80,7 @@ RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linu
 RUN npm install -g tree-sitter-cli
 
 # Отключаем создание venv и настраиваем генерацию прямо в систему
-ENV POETRY_VIRTUALENVS_CREATE=false
+# ENV POETRY_VIRTUALENVS_CREATE=false
 # Установка зависимостей без создания окружения
 # RUN poetry install --no-interaction --no-ansi
 
