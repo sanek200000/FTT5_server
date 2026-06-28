@@ -55,6 +55,7 @@ class TTSModel:
         sf.write(out_path, wav, sr)
 
         return TTSResultDTO(
+            ref_path=ref_path,
             wav_path=out_path,
             generation_time=generation_time,
             ref_duration=ref_duration,

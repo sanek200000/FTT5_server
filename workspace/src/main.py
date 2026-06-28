@@ -91,4 +91,4 @@ async def synthesis_exception_handler(request, ex):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", reload=True, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", reload=False, host="0.0.0.0", port=8000)
