@@ -58,10 +58,18 @@ class TTSModel:
         out_path = TempFiles.create_output()
         sf.write(out_path, wav, sr)
 
+        stretch_ratio = 1.0
+        if request.match_duration:
+            stretch_ratio = AudioProcessor.match_duration(
+                wav_path=out_path,
+                target_duration=ref_duration,
+            )
+
         return SynthesisResultDTO(
             ref_path=ref_path,
             wav_path=out_path,
             generation_time=generation_time,
             ref_duration=ref_duration,
             result_duration=result_duration,
+            stretch_ratio=stretch_ratio,
         )

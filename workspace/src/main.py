@@ -44,6 +44,7 @@ async def tts_endpoint(
     gen_text: str = Form(examples=["Привет"]),
     speed: float = Form(1.0),
     remove_silence=Form(True),
+    match_duration=Form(True),
     seed: Optional[int] = Form(None),
 ):
 
@@ -55,6 +56,7 @@ async def tts_endpoint(
         gen_text=gen_text,
         speed=speed,
         remove_silence=remove_silence,
+        match_duration=match_duration,
         seed=seed,
     )
 
@@ -68,6 +70,7 @@ async def tts_endpoint(
         f" gen={result.generation_time:.2f}s"
         f" ref={result.ref_duration:.2f}s"
         f" out={result.result_duration:.2f}s"
+        f" stretch={result.stretch_ratio:.3f}"
     )
 
     background_tasks.add_task(result.ref_path.unlink, missing_ok=True)

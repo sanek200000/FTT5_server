@@ -12,6 +12,9 @@ class TTSRequestDTO(BaseModel):
     remove_silence: bool = False
     seed: Optional[int] = None
 
+    match_duration: bool = False
+    # target_duration: Optional[float] = Field(default=None, gt=0)
+
 
 class SynthesisResultDTO(BaseModel):
     ref_path: Path
@@ -19,3 +22,4 @@ class SynthesisResultDTO(BaseModel):
     generation_time: float
     ref_duration: float
     result_duration: float
+    stretch_ratio: float
