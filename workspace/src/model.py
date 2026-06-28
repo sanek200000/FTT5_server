@@ -1,11 +1,15 @@
-from dataclasses import dataclass
-from pathlib import Path
-import tempfile
-
 from f5_tts.api import F5TTS
 import soundfile as sf
 
+from src.exceptions import SynthesisException
+from src.schemas.tts import TTSRequestDTO, TTSResultDTO
+from src.services.temp_files import TempFiles
 from src.config import SAFETENSORS_MISHA, VOCAB_MISHA
+
+# @dataclass(slots=True)
+# class SynthesisResult:
+#     ref_path: Path
+#     wav_path: Path
 
 
 class TTSModel:
@@ -20,30 +24,25 @@ class TTSModel:
 
     def synthesize(
         self,
+        request: TTSRequestDTO,
         ref_audio_bytes: bytes,
-        ref_text: str,
-        gen_text: str,
-    ) -> Path:
+    ) -> TTSResultDTO:
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-            tmp.write(ref_audio_bytes)
-            ref_path = Path(tmp.name)
+        ref_path = TempFiles.create_wav(ref_audio_bytes)
 
-        wav, sr, _ = self.tts.infer(
-            ref_file=str(ref_path),
-            ref_text=ref_text,
-            gen_text=gen_text,
-        )
+        try:
+            wav, sr, _ = self.tts.infer(
+                ref_file=str(ref_path),
+                ref_text=request.ref_text,
+                gen_text=request.gen_text,
+                speed=request.speed,
+                remove_silence=request.remove_silence,
+                seed=request.seed,
+            )
+        except Exception as ex:
+            raise SynthesisException(str(ex))
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as out:
-            out_path = Path(out.name)
-            sf.write(out_path, wav, sr)
+        out_path = TempFiles.create_output()
+        sf.write(out_path, wav, sr)
 
-        return out_path
-
-
-@dataclass
-class SynthesisResult:
-    wav_path: Path
-    sample_rate: int
-    duration: float
+        return TTSResultDTO(ref_path=ref_path, wav_path=out_path)
