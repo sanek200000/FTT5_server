@@ -1,3 +1,6 @@
+import time
+import soundfile as sf
+
 from f5_tts.api import F5TTS
 import soundfile as sf
 
@@ -28,8 +31,11 @@ class TTSModel:
         ref_audio_bytes: bytes,
     ) -> TTSResultDTO:
 
-        ref_path = TempFiles.create_wav(ref_audio_bytes)
+        started = time.perf_counter()
 
+        ref_path = TempFiles.create_wav(ref_audio_bytes)
+        ref_info = sf.info(ref_path)
+        ref_duration = ref_info.duration
         try:
             wav, sr, _ = self.tts.infer(
                 ref_file=str(ref_path),
@@ -42,7 +48,15 @@ class TTSModel:
         except Exception as ex:
             raise SynthesisException(str(ex))
 
+        generation_time = time.perf_counter() - started
+        result_duration = len(wav) / sr
+
         out_path = TempFiles.create_output()
         sf.write(out_path, wav, sr)
 
-        return TTSResultDTO(ref_path=ref_path, wav_path=out_path)
+        return TTSResultDTO(
+            wav_path=out_path,
+            generation_time=generation_time,
+            ref_duration=ref_duration,
+            result_duration=result_duration,
+        )

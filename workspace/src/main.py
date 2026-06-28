@@ -7,7 +7,7 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, UploadFile
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from schemas.tts import TTSRequestDTO
+from src.schemas.tts import TTSRequestDTO
 from src.exceptions import SynthesisException
 from src.model import TTSModel
 
@@ -61,6 +61,13 @@ async def tts_endpoint(
     result = tts.synthesize(
         request=request,
         ref_audio_bytes=await ref_audio.read(),
+    )
+
+    print(
+        f"TTS: "
+        f" gen={result.generation_time:.2f}s"
+        f" ref={result.ref_duration:.2f}s"
+        f" out={result.result_duration:.2f}s"
     )
 
     background_tasks.add_task(result.ref_path.unlink, missing_ok=True)

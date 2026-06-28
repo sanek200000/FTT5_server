@@ -14,5 +14,8 @@ class TTSRequestDTO(BaseModel):
 
 
 class TTSResultDTO(BaseModel):
-    ref_path: Path
     wav_path: Path
+    generation_time: float
+    ref_duration: float
+    result_duration: float
+    # ref_path: Path
