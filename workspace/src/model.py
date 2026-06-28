@@ -5,7 +5,7 @@ from f5_tts.api import F5TTS
 import soundfile as sf
 
 from src.exceptions import SynthesisException
-from src.schemas.tts import TTSRequestDTO, TTSResultDTO
+from src.schemas.tts import SynthesisResultDTO, TTSRequestDTO
 from src.services.temp_files import TempFiles
 from src.config import SAFETENSORS_MISHA, VOCAB_MISHA
 
@@ -29,7 +29,7 @@ class TTSModel:
         self,
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
-    ) -> TTSResultDTO:
+    ) -> SynthesisResultDTO:
 
         started = time.perf_counter()
 
@@ -54,7 +54,7 @@ class TTSModel:
         out_path = TempFiles.create_output()
         sf.write(out_path, wav, sr)
 
-        return TTSResultDTO(
+        return SynthesisResultDTO(
             ref_path=ref_path,
             wav_path=out_path,
             generation_time=generation_time,

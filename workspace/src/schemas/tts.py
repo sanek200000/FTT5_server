@@ -13,7 +13,7 @@ class TTSRequestDTO(BaseModel):
     seed: Optional[int] = None
 
 
-class TTSResultDTO(BaseModel):
+class SynthesisResultDTO(BaseModel):
     ref_path: Path
     wav_path: Path
     generation_time: float
