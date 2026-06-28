@@ -8,6 +8,8 @@ ARG USERNAME
 
 # Установка системных зависимостей
 RUN apt-get update && apt-get install -y --no-install-recommends \
+  procps \
+  btop \
   zsh \
   build-essential \
   curl \

@@ -4,6 +4,7 @@ import soundfile as sf
 from f5_tts.api import F5TTS
 import soundfile as sf
 
+from src.services.audio_processor import AudioProcessor
 from src.exceptions import SynthesisException
 from src.schemas.tts import SynthesisResultDTO, TTSRequestDTO
 from src.services.temp_files import TempFiles
@@ -47,6 +48,9 @@ class TTSModel:
             )
         except Exception as ex:
             raise SynthesisException(str(ex))
+
+        if request.remove_silence:
+            wav = AudioProcessor.trim_silence(wav, sr)
 
         generation_time = time.perf_counter() - started
         result_duration = len(wav) / sr

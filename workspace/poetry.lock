@@ -363,6 +363,26 @@ mad = ["pymad[mad] (>=0.11.3,<0.12.0)"]
 test = ["pytest (>=8.4.2)", "pytest-cov (>=7.0.0)"]
 
 [[package]]
+name = "audiostretchy"
+version = "1.3.5"
+description = "AudioStretchy is a Python library and CLI tool that which performs fast, high-quality time-stretching of WAV/MP3 files without changing their pitch. Works well for speech, can time-stretch silence separately. AudioStretchy is a wrapper around the audio-stretch C library by David Bryant."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "audiostretchy-1.3.5-py3-none-any.whl", hash = "sha256:17f65d4e5e8f08c75d3add851edca5751a3925d7b46b92e65d81842d4bf10dc9"},
+    {file = "audiostretchy-1.3.5.tar.gz", hash = "sha256:54a4d593304bd21bbd15c90b131cb134a1cef8153862f8a3af505e8be9c9fc01"},
+]
+
+[package.dependencies]
+fire = ">=0.5.0"
+numpy = ">=1.23.0"
+
+[package.extras]
+all = ["pydub (>=0.25.1) ; sys_platform == \"darwin\"", "pymp3 (>=0.1.9) ; sys_platform == \"win32\" or sys_platform == \"linux\"", "soxr (>=0.3.5)"]
+testing = ["pytest", "pytest-cov", "setuptools"]
+
+[[package]]
 name = "bitsandbytes"
 version = "0.49.2"
 description = "k-bit optimizers and matrix multiplication routines."
@@ -1343,6 +1363,24 @@ files = [
     {file = "filelock-3.29.4-py3-none-any.whl", hash = "sha256:dac1648087d5115554850d113e7dd8c83ab2d38e3435dde2d4f163847e57b767"},
     {file = "filelock-3.29.4.tar.gz", hash = "sha256:10cdb3656fc44541cdf30652a93fb10ec6b05325620eb316bd26893e4201538a"},
 ]
+
+[[package]]
+name = "fire"
+version = "0.7.1"
+description = "A library for automatically generating command line interfaces."
+optional = false
+python-versions = ">=3.7"
+groups = ["main"]
+files = [
+    {file = "fire-0.7.1-py3-none-any.whl", hash = "sha256:e43fd8a5033a9001e7e2973bab96070694b9f12f2e0ecf96d4683971b5ab1882"},
+    {file = "fire-0.7.1.tar.gz", hash = "sha256:3b208f05c736de98fb343310d090dcc4d8c78b2a89ea4f32b837c586270a9cbf"},
+]
+
+[package.dependencies]
+termcolor = "*"
+
+[package.extras]
+test = ["hypothesis (<6.136.0)", "levenshtein (<=0.27.1)", "pip", "pylint (<3.3.8)", "pytest (<=8.4.1)", "pytest-pylint (<=1.1.2)", "pytest-runner (<7.0.0)", "setuptools (<=80.9.0)", "termcolor (<3.2.0)"]
 
 [[package]]
 name = "fonttools"
@@ -5146,6 +5184,21 @@ mpmath = ">=1.1.0,<1.4"
 dev = ["hypothesis (>=6.70.0)", "pytest (>=7.1.0)"]
 
 [[package]]
+name = "termcolor"
+version = "3.3.0"
+description = "ANSI color formatting for output in terminal"
+optional = false
+python-versions = ">=3.10"
+groups = ["main"]
+files = [
+    {file = "termcolor-3.3.0-py3-none-any.whl", hash = "sha256:cf642efadaf0a8ebbbf4bc7a31cec2f9b5f21a9f726f4ccbb08192c9c26f43a5"},
+    {file = "termcolor-3.3.0.tar.gz", hash = "sha256:348871ca648ec6a9a983a13ab626c0acce02f515b9e1983332b17af7979521c5"},
+]
+
+[package.extras]
+tests = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "threadpoolctl"
 version = "3.6.0"
 description = "threadpoolctl"
@@ -6089,4 +6142,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.15"
-content-hash = "b63353c5df4662dfcf6dfe90c35870879754b20189e68b1785134610d92d2f6a"
+content-hash = "3eda0d8a7411e90633ee6e3e8c13e28988df8c10c03f853cc436e926d3448105"
