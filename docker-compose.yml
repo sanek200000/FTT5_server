@@ -19,7 +19,7 @@ services:
       - f5tts-home:/home/${USERNAME}
     tty: true
     stdin_open: true
-    command: ["zsh"]
+    command: poetry run python src/main.py
 
 # ============================================
 # Тома для сохранения данных

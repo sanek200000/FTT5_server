@@ -10,20 +10,41 @@ from src.schemas.tts import SynthesisResultDTO, TTSRequestDTO
 from src.services.temp_files import TempFiles
 from src.config import SAFETENSORS_MISHA, VOCAB_MISHA
 
-# @dataclass(slots=True)
-# class SynthesisResult:
-#     ref_path: Path
-#     wav_path: Path
-
 
 class TTSModel:
+    """
+    Обёртка над моделью F5-TTS для локального синтеза речи.
+
+    Инкапсулирует загрузку модели, выполнение inference и постобработку
+    аудио (удаление тишины, нормализация длительности, сохранение файлов).
+
+    Attributes:
+        tts (F5TTS): Инициализированная модель TTS.
+    """
     def __init__(self) -> None:
+        """
+        Загружает модель F5-TTS в память.
+
+        Notes:
+            Загружает веса из путей SAFETENSORS_MISHA и VOCAB_MISHA.
+        """
         print("Loading F5-TTS...")
 
         self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device="cpu")
         print("F5-TTS loaded.")
 
     def infer(self, ref_file, ref_text, gen_text):
+        """
+        Выполняет прямой inference модели F5-TTS.
+
+        Args:
+            ref_file (str): Путь к референсному аудиофайлу.
+            ref_text (str): Текст, соответствующий референсному аудио.
+            gen_text (str): Генерируемый текст.
+
+        Returns:
+            tuple: Результат генерации модели F5-TTS.
+        """
         return self.tts.infer(ref_file=ref_file, ref_text=ref_text, gen_text=gen_text)
 
     def synthesize(
@@ -31,6 +52,31 @@ class TTSModel:
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
     ) -> SynthesisResultDTO:
+        """
+        Выполняет полный пайплайн синтеза речи.
+
+        Включает:
+        - сохранение референсного аудио во временный файл
+        - выполнение TTS inference
+        - постобработку (удаление тишины, выравнивание длительности)
+        - сохранение результата на диск
+        - расчёт метрик генерации
+
+        Args:
+            request (TTSRequestDTO): Параметры синтеза речи.
+            ref_audio_bytes (bytes): Референсное аудио в бинарном виде.
+
+        Returns:
+            SynthesisResultDTO: Результат синтеза с метаданными.
+
+        Raises:
+            SynthesisException: Ошибка во время генерации TTS.
+
+        Side Effects:
+            - Создаёт временные файлы (ref и output WAV).
+            - Записывает сгенерированное аудио на диск.
+            - Выполняет обработку сигнала (trim / time-stretch).
+        """
 
         started = time.perf_counter()
 
