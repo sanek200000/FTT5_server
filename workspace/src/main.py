@@ -6,8 +6,8 @@ from fastapi.responses import JSONResponse
 
 sys.path.append(str(Path(__file__).parent.parent))
 
+from src.services.lifespan import lifespan
 from src.exceptions import SynthesisException
-from src.lifespan import lifespan
 from src.api.tts import router as router_f5tts
 
 app = FastAPI(lifespan=lifespan)

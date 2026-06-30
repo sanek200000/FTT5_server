@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from src.model import TTSModel
+from models.tts import TTSModel
 
 TTS: Optional[TTSModel] = None
 

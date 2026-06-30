@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
 from fastapi.responses import FileResponse
 
 from src.schemas.tts import TTSRequestDTO
-from src.lifespan import TTS as tts
+from src.services.lifespan import TTS as tts
 
 router = APIRouter(prefix="/f5tts", tags=["F5TTS_model"])
 
