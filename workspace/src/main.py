@@ -1,86 +1,18 @@
 import sys
 from pathlib import Path
-from typing import Optional
-from contextlib import asynccontextmanager
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi import BackgroundTasks, FastAPI, File, Form, UploadFile
+
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.schemas.tts import TTSRequestDTO
 from src.exceptions import SynthesisException
-from src.model import TTSModel
-
-tts: Optional[TTSModel] = None
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global tts
-
-    print("Loading model...")
-    tts = TTSModel()
-    print("Model loaded.")
-
-    yield
-
-    print("Stopping server...")
-
+from src.lifespan import lifespan
+from src.api.tts import router as router_f5tts
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(router_f5tts)
 # app = FastAPI()
-
-
-@app.get("/")
-def root():
-    return {"status": "OK"}
-
-
-@app.post("/tts")
-async def tts_endpoint(
-    background_tasks: BackgroundTasks,
-    ref_audio: UploadFile = File(),
-    ref_text: str = Form(examples=["Hello"]),
-    gen_text: str = Form(examples=["Привет"]),
-    speed: float = Form(1.0),
-    remove_silence=Form(True),
-    match_duration=Form(True),
-    seed: Optional[int] = Form(None),
-):
-
-    if not tts:
-        raise RuntimeError("Model is not loaded")
-
-    request = TTSRequestDTO(
-        ref_text=ref_text,
-        gen_text=gen_text,
-        speed=speed,
-        remove_silence=remove_silence,
-        match_duration=match_duration,
-        seed=seed,
-    )
-
-    result = tts.synthesize(
-        request=request,
-        ref_audio_bytes=await ref_audio.read(),
-    )
-
-    print(
-        f"TTS: "
-        f" gen={result.generation_time:.2f}s"
-        f" ref={result.ref_duration:.2f}s"
-        f" out={result.result_duration:.2f}s"
-        f" stretch={result.stretch_ratio:.3f}"
-    )
-
-    background_tasks.add_task(result.ref_path.unlink, missing_ok=True)
-    background_tasks.add_task(result.wav_path.unlink, missing_ok=True)
-
-    return FileResponse(
-        path=result.wav_path,
-        media_type="audio/wav",
-        filename="result.wav",
-    )
 
 
 @app.exception_handler(SynthesisException)

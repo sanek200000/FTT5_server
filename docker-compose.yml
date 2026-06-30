@@ -10,6 +10,7 @@ services:
         GROUP_ID: ${GROUP_ID:-1000}
         USERNAME: ${USERNAME:-user}
     container_name: f5tts_fastapi_dev_conteiner
+    hostname: f5tts_fastapi_dev_conteiner
     ports:
       - "8000:8000"
     volumes:
@@ -19,7 +20,8 @@ services:
       - f5tts-home:/home/${USERNAME}
     tty: true
     stdin_open: true
-    command: poetry run python src/main.py
+    # command: poetry run python src/main.py
+    command: zsh
 
 # ============================================
 # Тома для сохранения данных
