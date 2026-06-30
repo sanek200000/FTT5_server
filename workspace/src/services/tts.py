@@ -8,7 +8,7 @@ from src.services.audio_processor import AudioProcessor
 from src.exceptions import SynthesisException
 from src.schemas.tts import SynthesisResultDTO, TTSRequestDTO
 from src.services.temp_files import TempFiles
-from src.config import SAFETENSORS_MISHA, VOCAB_MISHA
+from src.config import DEVICE, SAFETENSORS_MISHA, VOCAB_MISHA
 
 
 class TTSModel:
@@ -21,6 +21,7 @@ class TTSModel:
     Attributes:
         tts (F5TTS): Инициализированная модель TTS.
     """
+
     def __init__(self) -> None:
         """
         Загружает модель F5-TTS в память.
@@ -30,7 +31,7 @@ class TTSModel:
         """
         print("Loading F5-TTS...")
 
-        self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device="cpu")
+        self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
         print("F5-TTS loaded.")
 
     def infer(self, ref_file, ref_text, gen_text):

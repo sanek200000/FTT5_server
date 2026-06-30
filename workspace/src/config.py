@@ -1,7 +1,6 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 APP_PATH = BASE_DIR.joinpath("src/")
@@ -13,6 +12,8 @@ SAFETENSORS_MISHA = MODELS_PATH.joinpath(
 )
 VOCAB_MISHA = MODELS_PATH.joinpath("F5-TTS_RUSSIAN_misha/F5TTS_v1_Base/vocab.txt")
 
+DEVICE = "cpu"
+# DEVICE = "cuda"
 
 
 class Settings(BaseSettings):
