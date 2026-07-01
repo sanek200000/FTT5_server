@@ -2,6 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
+from loguru import logger
 
 from src.schemas.tts import TTSRequestDTO
 
@@ -30,6 +31,7 @@ async def tts_endpoint(
     tts = tts_request.app.state.tts
 
     if not tts:
+        logger.error(RuntimeError("Model is not loaded"))
         raise RuntimeError("Model is not loaded")
 
     request = TTSRequestDTO(
@@ -46,7 +48,7 @@ async def tts_endpoint(
         ref_audio_bytes=await ref_audio.read(),
     )
 
-    print(
+    logger.debug(
         f"TTS: "
         f" gen={result.generation_time:.2f}s"
         f" ref={result.ref_duration:.2f}s"

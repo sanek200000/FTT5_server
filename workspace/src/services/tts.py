@@ -1,8 +1,8 @@
 import time
+from loguru import logger
 import soundfile as sf
 
 from f5_tts.api import F5TTS
-import soundfile as sf
 
 from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
@@ -31,9 +31,9 @@ class TTSModel:
         Notes:
             Загружает веса из путей SAFETENSORS_MISHA и VOCAB_MISHA.
         """
-        print("Loading F5-TTS...")
+        logger.info("Loading F5-TTS...")
         self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
-        print("F5-TTS loaded.")
+        logger.info("F5-TTS loaded.")
 
         self._whisper = WhisperService()
         self._similarity = TextSimilarityService()
@@ -63,12 +63,23 @@ class TTSModel:
             recognized=recognized,
         )
 
-        print(
-            f"[Whisper] "
-            f"score={similarity.score:.2f}% "
-            f"expected='{request.gen_text}' "
-            f"recognized='{recognized}'"
-        )
+        result.similarity = similarity.score
+        result.recognized_text = similarity.recognized
+
+        # logger.debug(
+        #     "\n"
+        #     "Whisper:\n"
+        #     "score=%.2f%%\n"
+        #     "expected='%s'\n"
+        #     "recognized='%s'\n"
+        #     "expected_norm='%s'\n"
+        #     "recognized_norm='%s'",
+        #     similarity.score,
+        #     similarity.expected,
+        #     similarity.recognized,
+        #     similarity.expected_norm,
+        #     similarity.recognized_norm,
+        # )
 
         return similarity.score
 
@@ -82,6 +93,15 @@ class TTSModel:
         ref_path = TempFiles.create_wav(ref_audio_bytes)
         ref_info = sf.info(ref_path)
         ref_duration = ref_info.duration
+
+        # logger.debug(
+        #     "\n" "Request:\n" "ref_text='%s'\n" "gen_text='%s'\n" "speed=%.3f\n" "seed=%s",
+        #     request.ref_text,
+        #     request.gen_text,
+        #     request.speed,
+        #     request.seed,
+        # )
+
         try:
             wav, sr, _ = self.tts.infer(
                 ref_file=str(ref_path),
@@ -110,6 +130,14 @@ class TTSModel:
                 target_duration=ref_duration,
             )
 
+        # logger.debug(
+        #     "TTS: " "gen=%.2fs " "ref=%.2fs " "out=%.2fs " "stretch=%.3f",
+        #     generation_time,
+        #     ref_duration,
+        #     result_duration,
+        #     stretch_ratio,
+        # )
+
         return SynthesisResultDTO(
             ref_path=ref_path,
             wav_path=out_path,
@@ -131,5 +159,7 @@ class TTSModel:
 
         if request.verify_with_whisper:
             self._verify_result(request=request, result=result)
+
+        logger.info(result.format_log(request))
 
         return result

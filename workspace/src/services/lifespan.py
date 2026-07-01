@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from typing import Optional
 
+from loguru import logger
+
 from src.services.tts import TTSModel
 
 TTS: Optional[TTSModel] = None
@@ -22,12 +24,12 @@ TTS: Optional[TTSModel] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading model...")
+    logger.info("Loading model...")
 
     app.state.tts = TTSModel()
 
-    print("Model loaded.")
+    logger.info("Model loaded.")
 
     yield
 
-    print("Stopping server...")
+    logger.info("Stopping server...")

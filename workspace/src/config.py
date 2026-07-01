@@ -1,5 +1,9 @@
+import sys
 from pathlib import Path
 from pydantic_settings import BaseSettings
+from loguru import logger
+
+sys.path.append(str(Path(__file__).parent.parent))
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,6 +18,13 @@ VOCAB_MISHA = MODELS_PATH.joinpath("F5-TTS_RUSSIAN_misha/F5TTS_v1_Base/vocab.txt
 
 DEVICE = "cpu"
 # DEVICE = "cuda"
+
+logger.remove()
+logger.add(
+    APP_PATH.joinpath("logs/tts_server.log"),
+    # rotation="100 minute",
+    # retention=2,
+)
 
 
 class Settings(BaseSettings):

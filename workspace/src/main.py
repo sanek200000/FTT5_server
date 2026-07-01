@@ -1,11 +1,7 @@
-import sys
-from pathlib import Path
-
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-sys.path.append(str(Path(__file__).parent.parent))
-
+from config import logger
 
 from src.utils.generate_tree import save_structure
 from src.services.lifespan import lifespan
@@ -31,6 +27,8 @@ async def synthesis_exception_handler(request, ex):
 
 if __name__ == "__main__":
     import uvicorn
+
+    logger.info("----------------------START NEW SESSION----------------------")
 
     # save_structure()
     uvicorn.run("main:app", reload=False, host="0.0.0.0", port=8000)
