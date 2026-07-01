@@ -7,12 +7,25 @@ from src.services.tts import TTSModel
 TTS: Optional[TTSModel] = None
 
 
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     global TTS
+#
+#     print("Loading model...")
+#     TTS = TTSModel()
+#     print("Model loaded.")
+#
+#     yield
+#
+#     print("Stopping server...")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global TTS
-
     print("Loading model...")
-    TTS = TTSModel()
+
+    app.state.tts = TTSModel()
+
     print("Model loaded.")
 
     yield

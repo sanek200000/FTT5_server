@@ -1,10 +1,11 @@
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse
 
 from src.schemas.tts import TTSRequestDTO
-from src.services.lifespan import TTS as tts
+
+# from src.services.lifespan import TTS as tts
 
 router = APIRouter(prefix="/f5tts", tags=["F5TTS_model"])
 
@@ -16,6 +17,7 @@ def root():
 
 @router.post("/tts")
 async def tts_endpoint(
+    tts_request: Request,
     background_tasks: BackgroundTasks,
     ref_audio: UploadFile = File(),
     ref_text: str = Form(examples=["Hello"]),
@@ -25,6 +27,7 @@ async def tts_endpoint(
     match_duration=Form(True),
     seed: Optional[int] = Form(None),
 ):
+    tts = tts_request.app.state.tts
 
     if not tts:
         raise RuntimeError("Model is not loaded")

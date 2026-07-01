@@ -32,5 +32,5 @@ async def synthesis_exception_handler(request, ex):
 if __name__ == "__main__":
     import uvicorn
 
-    save_structure()
+    # save_structure()
     uvicorn.run("main:app", reload=False, host="0.0.0.0", port=8000)

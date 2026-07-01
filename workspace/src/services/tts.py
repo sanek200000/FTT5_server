@@ -4,6 +4,8 @@ import soundfile as sf
 from f5_tts.api import F5TTS
 import soundfile as sf
 
+from src.services.text_similarity import TextSimilarityService
+from src.services.whisper import WhisperService
 from src.services.audio_processor import AudioProcessor
 from src.exceptions import SynthesisException
 from src.schemas.tts import SynthesisResultDTO, TTSRequestDTO
@@ -30,9 +32,11 @@ class TTSModel:
             Загружает веса из путей SAFETENSORS_MISHA и VOCAB_MISHA.
         """
         print("Loading F5-TTS...")
-
         self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
         print("F5-TTS loaded.")
+
+        # self._whisper = WhisperService()
+        # self._similarity = TextSimilarityService()
 
     def infer(self, ref_file, ref_text, gen_text):
         """
@@ -48,37 +52,11 @@ class TTSModel:
         """
         return self.tts.infer(ref_file=ref_file, ref_text=ref_text, gen_text=gen_text)
 
-    def synthesize(
+    def _synthesize_once(
         self,
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
     ) -> SynthesisResultDTO:
-        """
-        Выполняет полный пайплайн синтеза речи.
-
-        Включает:
-        - сохранение референсного аудио во временный файл
-        - выполнение TTS inference
-        - постобработку (удаление тишины, выравнивание длительности)
-        - сохранение результата на диск
-        - расчёт метрик генерации
-
-        Args:
-            request (TTSRequestDTO): Параметры синтеза речи.
-            ref_audio_bytes (bytes): Референсное аудио в бинарном виде.
-
-        Returns:
-            SynthesisResultDTO: Результат синтеза с метаданными.
-
-        Raises:
-            SynthesisException: Ошибка во время генерации TTS.
-
-        Side Effects:
-            - Создаёт временные файлы (ref и output WAV).
-            - Записывает сгенерированное аудио на диск.
-            - Выполняет обработку сигнала (trim / time-stretch).
-        """
-
         started = time.perf_counter()
 
         ref_path = TempFiles.create_wav(ref_audio_bytes)
@@ -119,4 +97,14 @@ class TTSModel:
             ref_duration=ref_duration,
             result_duration=result_duration,
             stretch_ratio=stretch_ratio,
+        )
+
+    def synthesize(
+        self,
+        request: TTSRequestDTO,
+        ref_audio_bytes: bytes,
+    ) -> SynthesisResultDTO:
+        return self._synthesize_once(
+            request=request,
+            ref_audio_bytes=ref_audio_bytes,
         )
