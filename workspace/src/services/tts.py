@@ -35,8 +35,8 @@ class TTSModel:
         self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
         print("F5-TTS loaded.")
 
-        # self._whisper = WhisperService()
-        # self._similarity = TextSimilarityService()
+        self._whisper = WhisperService()
+        self._similarity = TextSimilarityService()
 
     def infer(self, ref_file, ref_text, gen_text):
         """
@@ -51,6 +51,26 @@ class TTSModel:
             tuple: Результат генерации модели F5-TTS.
         """
         return self.tts.infer(ref_file=ref_file, ref_text=ref_text, gen_text=gen_text)
+
+    def _verify_result(
+        self,
+        request: TTSRequestDTO,
+        result: SynthesisResultDTO,
+    ) -> float:
+        recognized = self._whisper.transcribe(result.wav_path)
+        similarity = self._similarity.similarity(
+            expected=request.gen_text,
+            recognized=recognized,
+        )
+
+        print(
+            f"[Whisper] "
+            f"score={similarity.score:.2f}% "
+            f"expected='{request.gen_text}' "
+            f"recognized='{recognized}'"
+        )
+
+        return similarity.score
 
     def _synthesize_once(
         self,
@@ -104,7 +124,12 @@ class TTSModel:
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
     ) -> SynthesisResultDTO:
-        return self._synthesize_once(
+        result = self._synthesize_once(
             request=request,
             ref_audio_bytes=ref_audio_bytes,
         )
+
+        if request.verify_with_whisper:
+            self._verify_result(request=request, result=result)
+
+        return result
