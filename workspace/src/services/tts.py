@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 from loguru import logger
 import soundfile as sf
 
@@ -152,14 +153,63 @@ class TTSModel:
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
     ) -> SynthesisResultDTO:
-        result = self._synthesize_once(
-            request=request,
-            ref_audio_bytes=ref_audio_bytes,
+
+        if not request.verify_with_whisper:
+            result = self._synthesize_once(
+                request=request,
+                ref_audio_bytes=ref_audio_bytes,
+            )
+
+            logger.info(result.format_log(request))
+            return result
+
+        best_result: Optional[SynthesisResultDTO] = None
+        best_score = -1.0
+
+        for attempt in range(1, request.max_attempts + 1):
+            result = self._synthesize_once(
+                request=request,
+                ref_audio_bytes=ref_audio_bytes,
+            )
+
+            score = self._verify_result(
+                request=request,
+                result=result,
+            )
+
+            result.attempts = attempt
+
+            if score > best_score:
+                if best_result in not None:
+                    best_result.wav_path.unlink(missing_ok=True)
+
+                best_result = result
+                best_score = score
+
+            else:
+                best_result.wav_path.unlink(missing_ok=True)
+
+            logger.info(
+            f"Attempt {attempt}/{request.max_attempts}: "
+            f"{score:.2f}%"
+            )
+
+            if score >= request.min_similarity:
+                logger.info(
+                    f"Similarity threshold reached "
+                    f"({score:.2f}% >= {request.min_similarity:.2f}%)"
+                )
+
+                logger.info(result.format_log(request))
+                return result
+
+        logger.warning(
+            f"Similarity threshold not reached after "
+            f"{request.max_attempts} attempts. "
+            f"Best result = {best_score:.2f}%"
         )
+    
+        logger.info(best_result.format_log(request))
+    
+        return best_result
 
-        if request.verify_with_whisper:
-            self._verify_result(request=request, result=result)
-
-        logger.info(result.format_log(request))
-
-        return result

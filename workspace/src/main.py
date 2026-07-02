@@ -3,7 +3,6 @@ from fastapi.responses import JSONResponse
 
 from config import logger
 
-from src.utils.generate_tree import save_structure
 from src.services.lifespan import lifespan
 from src.exceptions import SynthesisException
 
@@ -30,5 +29,6 @@ if __name__ == "__main__":
 
     logger.info("----------------------START NEW SESSION----------------------")
 
-    # save_structure()
     uvicorn.run("main:app", reload=False, host="0.0.0.0", port=8000)
+
+    logger.info("----------------------END SESSION----------------------")
