@@ -4,7 +4,7 @@
 
 
 -- vim.g.colorscheme = "habamax"
-vim.o.scrolloff = 999
+-- vim.o.scrolloff = 999
 -- vim.cmd([[colorscheme catppuccin]])
 
 -- Позволяет перемещать курсор на пустые виртуальные строки в самом конце файла

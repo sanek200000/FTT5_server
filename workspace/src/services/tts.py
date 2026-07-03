@@ -1,3 +1,5 @@
+from random import randint
+import re
 import time
 from typing import Optional
 from loguru import logger
@@ -9,7 +11,7 @@ from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
 from src.services.audio_processor import AudioProcessor
 from src.exceptions import SynthesisException
-from src.schemas.tts import SynthesisResultDTO, TTSRequestDTO
+from src.schemas.tts import AttemptDTO, SynthesisResultDTO, TTSRequestDTO
 from src.services.temp_files import TempFiles
 from src.config import DEVICE, SAFETENSORS_MISHA, VOCAB_MISHA
 
@@ -67,21 +69,6 @@ class TTSModel:
         result.similarity = similarity.score
         result.recognized_text = similarity.recognized
 
-        # logger.debug(
-        #     "\n"
-        #     "Whisper:\n"
-        #     "score=%.2f%%\n"
-        #     "expected='%s'\n"
-        #     "recognized='%s'\n"
-        #     "expected_norm='%s'\n"
-        #     "recognized_norm='%s'",
-        #     similarity.score,
-        #     similarity.expected,
-        #     similarity.recognized,
-        #     similarity.expected_norm,
-        #     similarity.recognized_norm,
-        # )
-
         return similarity.score
 
     def _synthesize_once(
@@ -94,14 +81,6 @@ class TTSModel:
         ref_path = TempFiles.create_wav(ref_audio_bytes)
         ref_info = sf.info(ref_path)
         ref_duration = ref_info.duration
-
-        # logger.debug(
-        #     "\n" "Request:\n" "ref_text='%s'\n" "gen_text='%s'\n" "speed=%.3f\n" "seed=%s",
-        #     request.ref_text,
-        #     request.gen_text,
-        #     request.speed,
-        #     request.seed,
-        # )
 
         try:
             wav, sr, _ = self.tts.infer(
@@ -131,14 +110,6 @@ class TTSModel:
                 target_duration=ref_duration,
             )
 
-        # logger.debug(
-        #     "TTS: " "gen=%.2fs " "ref=%.2fs " "out=%.2fs " "stretch=%.3f",
-        #     generation_time,
-        #     ref_duration,
-        #     result_duration,
-        #     stretch_ratio,
-        # )
-
         return SynthesisResultDTO(
             ref_path=ref_path,
             wav_path=out_path,
@@ -148,6 +119,155 @@ class TTSModel:
             stretch_ratio=stretch_ratio,
         )
 
+    def _prepare_attempt_request(
+        self,
+        request: TTSRequestDTO,
+        attempt: int,
+    ) -> TTSRequestDTO:
+        current_request = request.model_copy(deep=True)
+
+        if attempt > 1:
+            current_request.seed = randint(0, 2**32 - 1)
+
+        if attempt > 3:
+            current_request.speed = max(0.5, request.speed - 0.1 * (attempt - 3))
+
+        return current_request
+
+    def _synthesize_without_verification(
+        self,
+        request: TTSRequestDTO,
+        ref_audio_bytes: bytes,
+    ) -> SynthesisResultDTO:
+        result = self._synthesize_once(
+            request=request,
+            ref_audio_bytes=ref_audio_bytes,
+        )
+
+        logger.info(result.format_log(request))
+        return result
+
+    def _register_attempt(
+        self,
+        attempt_history: list[AttemptDTO],
+        attempt: int,
+        request: TTSRequestDTO,
+        result: SynthesisResultDTO,
+        score: float,
+    ) -> None:
+
+        result.attempt = attempt
+
+        attempt_history.append(
+            AttemptDTO(
+                attempt=attempt,
+                seed=request.seed,
+                speed=request.speed,
+                similarity=score,
+                recognized_text=result.recognized_text,
+                generation_time=result.generation_time,
+            )
+        )
+
+        # logger.info(f"Attempt {attempt}/{request.max_attempts}: " f"{score:.2f}%")
+
+    def _select_best_result(
+        self,
+        result: SynthesisResultDTO,
+        request: TTSRequestDTO,
+        score: float,
+        best_result: Optional[SynthesisResultDTO],
+        best_request: Optional[TTSRequestDTO],
+        best_score: float,
+    ) -> tuple[Optional[SynthesisResultDTO], Optional[TTSRequestDTO], float]:
+
+        if score > best_score:
+            if best_result is not None:
+                best_result.wav_path.unlink(missing_ok=True)
+
+            return result, request, score
+
+        result.wav_path.unlink(missing_ok=True)
+        return best_result, best_request, best_score
+
+    def _finalize_best_result(
+        self,
+        request: TTSRequestDTO,
+        attempt_history: list[AttemptDTO],
+        best_result: Optional[SynthesisResultDTO],
+        best_request: Optional[TTSRequestDTO],
+        best_score: float,
+    ) -> SynthesisResultDTO:
+
+        assert best_result is not None
+        assert best_request is not None
+
+        logger.warning(
+            f"Similarity threshold not reached after "
+            f"{request.max_attempts} attempts. "
+            f"Best result = {best_score:.2f}%"
+        )
+
+        if best_score < request.accept_similarity:
+            best_result.wav_path.unlink(missing_ok=True)
+
+            raise SynthesisException(
+                f"Best similarity ({best_score:.2f}%) "
+                f"is below accept threshold "
+                f"({request.accept_similarity:.2f}%)"
+            )
+
+        best_result.attempt_history = attempt_history
+        logger.info(best_result.format_log(best_request))
+        return best_result
+
+    def _synthesize_with_verification(
+        self,
+        request: TTSRequestDTO,
+        ref_audio_bytes: bytes,
+    ) -> SynthesisResultDTO:
+
+        attempt_history: list[AttemptDTO] = list()
+        best_result: Optional[SynthesisResultDTO] = None
+        best_request: Optional[TTSRequestDTO] = None
+        best_score = -1.0
+
+        for attempt in range(1, request.max_attempts + 1):
+            current_request = self._prepare_attempt_request(request, attempt)
+
+            result = self._synthesize_once(
+                request=current_request,
+                ref_audio_bytes=ref_audio_bytes,
+            )
+
+            score = self._verify_result(current_request, result)
+
+            self._register_attempt(attempt_history, attempt, current_request, result, score)
+
+            best_result, best_request, best_score = self._select_best_result(
+                result,
+                current_request,
+                score,
+                best_result,
+                best_request,
+                best_score,
+            )
+
+            if score >= request.min_similarity:
+                logger.info(f"Similarity threshold reached " f"({score:.2f}% >= {request.min_similarity:.2f}%)")
+
+                result.attempt_history = attempt_history
+                logger.info(result.format_log(current_request))
+                return result
+
+        return self._finalize_best_result(
+            request,
+            attempt_history,
+            best_result,
+            best_request,
+            best_score,
+        )
+
     def synthesize(
         self,
         request: TTSRequestDTO,
@@ -155,61 +275,6 @@ class TTSModel:
     ) -> SynthesisResultDTO:
 
         if not request.verify_with_whisper:
-            result = self._synthesize_once(
-                request=request,
-                ref_audio_bytes=ref_audio_bytes,
-            )
+            return self._synthesize_without_verification(request=request, ref_audio_bytes=ref_audio_bytes)
 
-            logger.info(result.format_log(request))
-            return result
-
-        best_result: Optional[SynthesisResultDTO] = None
-        best_score = -1.0
-
-        for attempt in range(1, request.max_attempts + 1):
-            result = self._synthesize_once(
-                request=request,
-                ref_audio_bytes=ref_audio_bytes,
-            )
-
-            score = self._verify_result(
-                request=request,
-                result=result,
-            )
-
-            result.attempts = attempt
-
-            if score > best_score:
-                if best_result in not None:
-                    best_result.wav_path.unlink(missing_ok=True)
-
-                best_result = result
-                best_score = score
-
-            else:
-                best_result.wav_path.unlink(missing_ok=True)
-
-            logger.info(
-            f"Attempt {attempt}/{request.max_attempts}: "
-            f"{score:.2f}%"
-            )
-
-            if score >= request.min_similarity:
-                logger.info(
-                    f"Similarity threshold reached "
-                    f"({score:.2f}% >= {request.min_similarity:.2f}%)"
-                )
-
-                logger.info(result.format_log(request))
-                return result
-
-        logger.warning(
-            f"Similarity threshold not reached after "
-            f"{request.max_attempts} attempts. "
-            f"Best result = {best_score:.2f}%"
-        )
-    
-        logger.info(best_result.format_log(request))
-    
-        return best_result
-
+        return self._synthesize_with_verification(request=request, ref_audio_bytes=ref_audio_bytes)
