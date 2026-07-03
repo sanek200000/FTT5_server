@@ -1,7 +1,7 @@
 from random import randint
-import re
 import time
 from typing import Optional
+from fastapi import status
 from loguru import logger
 import soundfile as sf
 
@@ -13,6 +13,7 @@ from src.services.audio_processor import AudioProcessor
 from src.exceptions import SynthesisException
 from src.schemas.tts import AttemptDTO, SynthesisResultDTO, TTSRequestDTO
 from src.services.temp_files import TempFiles
+from src.services.job import job_manager
 from src.config import DEVICE, SAFETENSORS_MISHA, VOCAB_MISHA
 
 
@@ -197,6 +198,7 @@ class TTSModel:
         best_result: Optional[SynthesisResultDTO],
         best_request: Optional[TTSRequestDTO],
         best_score: float,
+        job_id: Optional[str] = None,
     ) -> SynthesisResultDTO:
 
         assert best_result is not None
@@ -210,6 +212,17 @@ class TTSModel:
 
         if best_score < request.accept_similarity:
             best_result.wav_path.unlink(missing_ok=True)
+
+            if job_id:
+                job_manager.update(
+                    job_id,
+                    status="failed",
+                    error=str(
+                        f"Best similarity ({best_score:.2f}%) "
+                        f"is below accept threshold "
+                        f"({request.accept_similarity:.2f}%)"
+                    ),
+                )
 
             raise SynthesisException(
                 f"Best similarity ({best_score:.2f}%) "
@@ -225,7 +238,11 @@ class TTSModel:
         self,
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
+        job_id: Optional[str] = None,
     ) -> SynthesisResultDTO:
+
+        if job_id:
+            job_manager.update(job_id, status="processing")
 
         attempt_history: list[AttemptDTO] = list()
         best_result: Optional[SynthesisResultDTO] = None
@@ -241,6 +258,13 @@ class TTSModel:
             )
 
             score = self._verify_result(current_request, result)
+            if job_id:
+                job_manager.update(
+                    job_id,
+                    current_attempt=attempt,
+                    similarity=score,
+                    speed=current_request.speed,
+                )
 
             self._register_attempt(attempt_history, attempt, current_request, result, score)
 
@@ -258,6 +282,13 @@ class TTSModel:
 
                 result.attempt_history = attempt_history
                 logger.info(result.format_log(current_request))
+
+                if job_id:
+                    job_manager.update(
+                        job_id,
+                        status="completed",
+                        similarity=score,
+                    )
                 return result
 
         return self._finalize_best_result(
@@ -266,6 +297,7 @@ class TTSModel:
             best_result,
             best_request,
             best_score,
+            job_id,
         )
 
     def synthesize(
