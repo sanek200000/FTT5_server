@@ -3,19 +3,19 @@ from uuid import uuid4
 
 from loguru import logger
 
-from schemas.job import JobStatusResponseDTO
+from schemas.job import JobInternalDTO
 
 
 class JobManager:
     def __init__(self) -> None:
-        self._jobs: dict[str, JobStatusResponseDTO] = dict()
+        self._jobs: dict[str, JobInternalDTO] = dict()
 
     def create_job(self) -> str:
         job_id = str(uuid4())
         now = datetime.now(UTC)
         logger.info(f"Create job with id = {job_id}")
 
-        self._jobs[job_id] = JobStatusResponseDTO(
+        self._jobs[job_id] = JobInternalDTO(
             id=job_id,
             status="queued",
             created_at=now,
@@ -24,7 +24,7 @@ class JobManager:
 
         return job_id
 
-    def get(self, job_id) -> JobStatusResponseDTO | None:
+    def get(self, job_id) -> JobInternalDTO | None:
         return self._jobs.get(job_id)
 
     def update(self, job_id, **kwargs) -> None:

@@ -304,9 +304,14 @@ class TTSModel:
         self,
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
+        job_id: Optional[str] = None,
     ) -> SynthesisResultDTO:
 
         if not request.verify_with_whisper:
             return self._synthesize_without_verification(request=request, ref_audio_bytes=ref_audio_bytes)
 
-        return self._synthesize_with_verification(request=request, ref_audio_bytes=ref_audio_bytes)
+        return self._synthesize_with_verification(
+            request=request,
+            ref_audio_bytes=ref_audio_bytes,
+            job_id=job_id,
+        )

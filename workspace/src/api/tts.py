@@ -1,14 +1,28 @@
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from loguru import logger
 
+from src.schemas.job import JobCreateResponseDTO, JobStatusResponseDTO
+from src.services.job_executor import start_job
 from src.schemas.tts import TTSRequestDTO
+from src.services.job import job_manager
 
 # from src.services.lifespan import TTS as tts
 
 router = APIRouter(prefix="/f5tts", tags=["F5TTS_model"])
+
+
+@router.get("/job/{job_id}", response_model=JobStatusResponseDTO)
+def get_job_status(job_id: str):
+    job = job_manager.get(job_id)
+
+    if job is None:
+        logger.error(f"Job '{job_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+
+    return JobStatusResponseDTO.model_validate(job)
 
 
 @router.get("/")
@@ -42,6 +56,17 @@ async def tts_endpoint(
         match_duration=match_duration,
         seed=seed,
     )
+
+    job_id = job_manager.create_job()
+
+    start_job(
+        job_id=job_id,
+        tts=tts,
+        request=request,
+        ref_audio_bytes=await ref_audio.read(),
+    )
+
+    return JobCreateResponseDTO(id=job_id)
 
     result = tts.synthesize(
         request=request,
