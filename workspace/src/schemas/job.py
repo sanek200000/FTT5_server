@@ -1,8 +1,17 @@
 from datetime import datetime
-from pathlib import Path
+from enum import StrEnum
 from typing import Optional
 
 from pydantic import BaseModel
+
+from src.schemas.tts import SynthesisResultDTO
+
+
+class JobStatus(StrEnum):
+    QUEUED = "queued"
+    PROGRESSING = "progressing"
+    COMPLETED = "comleted"
+    FAILED = "failed"
 
 
 class JobCreateResponseDTO(BaseModel):
@@ -10,7 +19,7 @@ class JobCreateResponseDTO(BaseModel):
 
 
 class JobStatusResponseDTO(JobCreateResponseDTO):
-    status: str
+    status: JobStatus
 
     current_attempt: int = 0
     max_attempts: int = 9
@@ -25,4 +34,6 @@ class JobStatusResponseDTO(JobCreateResponseDTO):
 
 
 class JobInternalDTO(JobStatusResponseDTO):
-    result_path: Optional[Path] = None
+    result: Optional[SynthesisResultDTO] = None
+    # result_path: Optional[Path] = None
+    # ref_path: Optional[Path] = None

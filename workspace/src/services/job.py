@@ -1,14 +1,21 @@
 from datetime import UTC, datetime
+from re import NOFLAG
 from uuid import uuid4
 
 from loguru import logger
 
-from schemas.job import JobInternalDTO
+from schemas.job import JobInternalDTO, JobStatus, JobStatusResponseDTO
 
 
 class JobManager:
     def __init__(self) -> None:
         self._jobs: dict[str, JobInternalDTO] = dict()
+
+    def get_status(self, job_id: str) -> JobStatusResponseDTO | None:
+        job = self._jobs.get(job_id)
+
+        if job:
+            return JobStatusResponseDTO(**job.model_dump(exclude={"result"}))
 
     def create_job(self) -> str:
         job_id = str(uuid4())
@@ -17,7 +24,7 @@ class JobManager:
 
         self._jobs[job_id] = JobInternalDTO(
             id=job_id,
-            status="queued",
+            status=JobStatus.QUEUED,
             created_at=now,
             updated_at=now,
         )
@@ -40,6 +47,9 @@ class JobManager:
         except Exception as ex:
             logger.error(f"ошибка валидации при обновлении задачи: {ex}")
             raise ValueError(f"ошибка валидации при обновлении задачи: {ex}")
+
+    def delete(self, job_id: str) -> None:
+        self._jobs.pop(job_id, None)
 
 
 job_manager = JobManager()

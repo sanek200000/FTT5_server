@@ -4,7 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Reque
 from fastapi.responses import FileResponse
 from loguru import logger
 
-from src.schemas.job import JobCreateResponseDTO, JobStatusResponseDTO
+from src.schemas.job import JobCreateResponseDTO, JobStatus, JobStatusResponseDTO
 from src.services.job_executor import start_job
 from src.schemas.tts import TTSRequestDTO
 from src.services.job import job_manager
@@ -16,13 +16,59 @@ router = APIRouter(prefix="/f5tts", tags=["F5TTS_model"])
 
 @router.get("/job/{job_id}", response_model=JobStatusResponseDTO)
 def get_job_status(job_id: str):
+    status = job_manager.get_status(job_id)
+
+    if status is None:
+        detail = f"Staus by job '{job_id}' not found"
+        logger.error(detail)
+        raise HTTPException(status_code=404, detail=detail)
+
+    return status
+
+
+@router.get("/job/{job_id}/result")
+def get_job_result(
+    job_id: str,
+    background_tasks: BackgroundTasks,
+):
     job = job_manager.get(job_id)
 
     if job is None:
-        logger.error(f"Job '{job_id}' not found")
-        raise HTTPException(status_code=404, detail=f"Job '{job_id}' not found")
+        detail = f"Job '{job_id}' not found"
+        logger.error(detail)
+        raise HTTPException(status_code=404, detail=detail)
 
-    return JobStatusResponseDTO.model_validate(job)
+    if job.status == JobStatus.FAILED:
+        detail = job.error
+        logger.error(detail)
+        raise HTTPException(status_code=500, detail=detail)
+
+    if job.status != JobStatus.COMPLETED:
+        detail = f"Job status is '{job.status}'"
+        logger.warning(detail)
+        raise HTTPException(status_code=409, detail=detail)
+
+    if job.result is None:
+        detail = "Result is empty"
+        logger.error(detail)
+        raise HTTPException(status_code=500, detail=detail)
+
+    if job.result.wav_path is None:
+        detail = "Result path is empty"
+        logger.error(detail)
+        raise HTTPException(status_code=500, detail=detail)
+
+    result = FileResponse(
+        path=job.result.wav_path,
+        media_type="audio/wav",
+        filename="result.wav",
+    )
+
+    background_tasks.add_task(job.result.ref_path.unlink, missing_ok=True)
+    background_tasks.add_task(job.result.wav_path.unlink, missing_ok=True)
+    background_tasks.add_task(job_manager.delete, job_id)
+
+    return result
 
 
 @router.get("/")
@@ -33,7 +79,6 @@ def root():
 @router.post("/tts")
 async def tts_endpoint(
     tts_request: Request,
-    background_tasks: BackgroundTasks,
     ref_audio: UploadFile = File(),
     ref_text: str = Form(examples=["Hello"]),
     gen_text: str = Form(examples=["Привет"]),
@@ -67,25 +112,3 @@ async def tts_endpoint(
     )
 
     return JobCreateResponseDTO(id=job_id)
-
-    result = tts.synthesize(
-        request=request,
-        ref_audio_bytes=await ref_audio.read(),
-    )
-
-    logger.debug(
-        f"TTS: "
-        f" gen={result.generation_time:.2f}s"
-        f" ref={result.ref_duration:.2f}s"
-        f" out={result.result_duration:.2f}s"
-        f" stretch={result.stretch_ratio:.3f}"
-    )
-
-    background_tasks.add_task(result.ref_path.unlink, missing_ok=True)
-    background_tasks.add_task(result.wav_path.unlink, missing_ok=True)
-
-    return FileResponse(
-        path=result.wav_path,
-        media_type="audio/wav",
-        filename="result.wav",
-    )

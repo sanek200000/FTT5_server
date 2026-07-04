@@ -2,6 +2,7 @@ from threading import Thread
 
 from loguru import logger
 
+from schemas.job import JobStatus
 from src.schemas.tts import TTSRequestDTO
 from src.services.tts import TTSModel
 from src.services.job import job_manager
@@ -31,14 +32,16 @@ def _run_job(
 
         job_manager.update(
             job_id,
-            status="completed",
-            result_path=result.wav_path,
+            status=JobStatus.COMPLETED,
+            result=result,
+            # result_path=result.wav_path,
+            # ref_path=result.ref_path,
         )
     except Exception as ex:
         logger.exception(ex)
         job_manager.update(
             job_id,
-            status="failed",
+            status=JobStatus.FAILED,
             error=str(ex),
         )
 

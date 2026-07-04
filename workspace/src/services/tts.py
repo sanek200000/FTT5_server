@@ -1,12 +1,12 @@
-from random import randint
 import time
-from typing import Optional
-from fastapi import status
-from loguru import logger
 import soundfile as sf
+from loguru import logger
+from random import randint
+from typing import Optional
 
 from f5_tts.api import F5TTS
 
+from src.schemas.job import JobStatus
 from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
 from src.services.audio_processor import AudioProcessor
@@ -170,7 +170,7 @@ class TTSModel:
             )
         )
 
-        # logger.info(f"Attempt {attempt}/{request.max_attempts}: " f"{score:.2f}%")
+        logger.info(f"Attempt {attempt}/{request.max_attempts}: " f"{score:.2f}%")
 
     def _select_best_result(
         self,
@@ -216,7 +216,7 @@ class TTSModel:
             if job_id:
                 job_manager.update(
                     job_id,
-                    status="failed",
+                    status=JobStatus.FAILED,
                     error=str(
                         f"Best similarity ({best_score:.2f}%) "
                         f"is below accept threshold "
@@ -242,7 +242,7 @@ class TTSModel:
     ) -> SynthesisResultDTO:
 
         if job_id:
-            job_manager.update(job_id, status="processing")
+            job_manager.update(job_id, status=JobStatus.PROGRESSING)
 
         attempt_history: list[AttemptDTO] = list()
         best_result: Optional[SynthesisResultDTO] = None
@@ -286,7 +286,7 @@ class TTSModel:
                 if job_id:
                     job_manager.update(
                         job_id,
-                        status="completed",
+                        status=JobStatus.COMPLETED,
                         similarity=score,
                     )
                 return result
