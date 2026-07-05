@@ -100,10 +100,17 @@ class TextSimilarityService:
         expected_norm = cls.normalize(expected)
         recognized_norm = cls.normalize(recognized)
 
-        score = fuzz.token_set_ratio(expected_norm, recognized_norm)
+        ratio = fuzz.ratio(expected_norm, recognized_norm)
+        token_ratio = fuzz.token_set_ratio(expected_norm, recognized_norm)
+        partial_ratio = fuzz.partial_ratio(expected_norm, recognized_norm)
+
+        score = max(ratio, token_ratio, partial_ratio)
 
         return SimilarityResultDTO(
             score=score,
+            ratio=ratio,
+            token_ratio=token_ratio,
+            partial_ratio=partial_ratio,
             expected=expected,
             recognized=recognized,
             expected_norm=expected_norm,
