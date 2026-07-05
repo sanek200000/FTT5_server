@@ -54,29 +54,6 @@ class AttemptDTO(BaseModel):
 
 
 class SynthesisResultDTO(BaseModel):
-    """
-    Pydantic-схема результата синтеза речи.
-
-    Содержит информацию о созданном аудио, характеристиках
-    генерации и результатах проверки качества синтеза.
-
-    Attributes:
-        ref_path (Path): Путь к временному файлу референсного аудио.
-        wav_path (Path): Путь к сгенерированному WAV-файлу.
-        generation_time (float): Время генерации аудио (сек).
-        ref_duration (float): Длительность референсного аудио (сек).
-        result_duration (float): Длительность сгенерированного аудио
-            до возможной коррекции.
-        stretch_ratio (float): Коэффициент изменения длительности
-            аудио при выравнивании.
-        attempts (int): Количество попыток генерации,
-            потребовавшихся для получения результата.
-        similarity (Optional[float]): Процент сходства между
-            ожидаемым и распознанным текстом.
-        recognized_text (Optional[str]): Текст, распознанный
-            системой ASR (например, Whisper).
-    """
-
     ref_path: Path
     wav_path: Path
     generation_time: float
@@ -86,6 +63,11 @@ class SynthesisResultDTO(BaseModel):
 
     attempt: int = 1
     similarity: Optional[float] = None
+
+    ratio: Optional[float] = None
+    token_ratio: Optional[float] = None
+    partial_ratio: Optional[float] = None
+
     recognized_text: Optional[str] = None
     attempt_history: list[AttemptDTO] = Field(default_factory=list)
 
@@ -100,6 +82,7 @@ class SynthesisResultDTO(BaseModel):
             )
             for item in self.attempt_history
         )
+
         return (
             "\n"
             "========================================================\n"
@@ -119,8 +102,11 @@ class SynthesisResultDTO(BaseModel):
             "\n"
             "Verification\n"
             "--------------------------------------------------------\n"
-            f"attempt        : {self.attempt}\n"
+            f"attempt         : {self.attempt}\n"
             f"similarity      : {self.similarity}\n"
+            f"ratio           : {self.ratio:.2f}\n"
+            f"token_ratio     : {self.token_ratio:.2f}\n"
+            f"partial_ratio   : {self.partial_ratio:.2f}\n"
             f"recognized      : {self.recognized_text}\n"
             "--------------------------------------------------------\n"
             f"{attempts_log}\n"

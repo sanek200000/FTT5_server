@@ -68,6 +68,11 @@ class TTSModel:
         )
 
         result.similarity = similarity.score
+
+        result.ratio = similarity.ratio
+        result.token_ratio = similarity.token_ratio
+        result.partial_ratio = similarity.partial_ratio
+
         result.recognized_text = similarity.recognized
 
         return similarity.score
