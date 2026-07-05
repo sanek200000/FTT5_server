@@ -5,69 +5,6 @@ from src.schemas.similarity import SimilarityResultDTO
 
 
 class TextSimilarityService:
-    all_text_symbols = [
-        ".",
-        ",",
-        "!",
-        "?",
-        ";",
-        ":",
-        "…",
-        "—",
-        "–",
-        "-",
-        "(",
-        ")",
-        "[",
-        "]",
-        "{",
-        "}",
-        "<",
-        ">",
-        '"',
-        "'",
-        "`",
-        "«",
-        "»",
-        "“",
-        "”",
-        "‘",
-        "’",
-        "„",
-        "+",
-        "=",
-        "*",
-        "/",
-        "%",
-        "№",
-        "$",
-        "€",
-        "£",
-        "¥",
-        "₽",
-        "¢",
-        "¤",
-        "@",
-        "#",
-        "§",
-        "&",
-        "_",
-        "|",
-        "\\",
-        "^",
-        "~",
-        "☺",
-        "☹",
-        "♥",
-        "★",
-        "✔",
-        "✖",
-        "⚠",
-        "ℹ",
-        "⚙",
-        "✉",
-        "✏",
-    ]
 
     @staticmethod
     def normalize(text: str) -> str:
@@ -80,16 +17,13 @@ class TextSimilarityService:
 
         return text.strip()
 
-    # @classmethod
-    # def normalize(cls, text: str) -> str:
-    #     text = text.lower()
-    #     text = text.replace("ё", "е")
-    #
-    #     for symbol in cls.all_text_symbols:
-    #         text = text.replace(symbol, "")
-    #
-    #     text = text.replace(" ", "")
-    #     return text.strip()
+    @staticmethod
+    def calculate_score(
+        ratio: float,
+        token_ratio: float,
+        partial_ratio: float,
+    ) -> float:
+        return max(ratio, token_ratio, partial_ratio)
 
     @classmethod
     def similarity(
@@ -104,7 +38,7 @@ class TextSimilarityService:
         token_ratio = fuzz.token_set_ratio(expected_norm, recognized_norm)
         partial_ratio = fuzz.partial_ratio(expected_norm, recognized_norm)
 
-        score = max(ratio, token_ratio, partial_ratio)
+        score = cls.calculate_score(ratio, token_ratio, partial_ratio)
 
         return SimilarityResultDTO(
             score=score,
