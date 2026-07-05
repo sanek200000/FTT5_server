@@ -19,11 +19,19 @@ VOCAB_MISHA = MODELS_PATH.joinpath("F5-TTS_RUSSIAN_misha/F5TTS_v1_Base/vocab.txt
 DEVICE = "cpu"
 # DEVICE = "cuda"
 
+
+def should_rotate_on_start(message, file):
+    if not hasattr(should_rotate_on_start, "has_run"):
+        should_rotate_on_start.has_run = True
+        return True
+    return False
+
+
 logger.remove()
 logger.add(
     APP_PATH.joinpath("logs/tts_server.log"),
-    # rotation="100 minute",
-    # retention=2,
+    rotation=should_rotate_on_start,
+    retention=10,
 )
 
 
