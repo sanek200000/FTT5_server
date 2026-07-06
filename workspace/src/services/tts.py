@@ -15,6 +15,7 @@ from src.schemas.tts import AttemptDTO, SynthesisResultDTO, TTSRequestDTO
 from src.services.temp_files import TempFiles
 from src.services.job import job_manager
 from src.config import DEVICE, SAFETENSORS_MISHA, VOCAB_MISHA
+from src.utils.downloader import download_model
 
 
 class TTSModel:
@@ -35,8 +36,18 @@ class TTSModel:
         Notes:
             Загружает веса из путей SAFETENSORS_MISHA и VOCAB_MISHA.
         """
+        if not SAFETENSORS_MISHA.exists():
+            logger.warning(f"File {str(SAFETENSORS_MISHA)} is not exists")
+            download_model(SAFETENSORS_MISHA)
+        if not VOCAB_MISHA.exists():
+            logger.warning(f"File {str(VOCAB_MISHA)} is not exists")
+            download_model(VOCAB_MISHA)
+
         logger.info("Loading F5-TTS...")
-        self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
+        try:
+            self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
+        except Exception as ex:
+            logger.error(f"{type(ex)}: {ex}")
         logger.info("F5-TTS loaded.")
 
         self._whisper = WhisperService()
@@ -140,19 +151,6 @@ class TTSModel:
 
         return current_request
 
-    def _synthesize_without_verification(
-        self,
-        request: TTSRequestDTO,
-        ref_audio_bytes: bytes,
-    ) -> SynthesisResultDTO:
-        result = self._synthesize_once(
-            request=request,
-            ref_audio_bytes=ref_audio_bytes,
-        )
-
-        logger.info(result.format_log(request))
-        return result
-
     def _register_attempt(
         self,
         attempt_history: list[AttemptDTO],
@@ -226,6 +224,7 @@ class TTSModel:
                         f"Best similarity ({best_score:.2f}%) "
                         f"is below accept threshold "
                         f"({request.accept_similarity:.2f}%)"
+                        f"Result: {best_result.format_log(best_request)}"
                     ),
                 )
 
@@ -304,6 +303,19 @@ class TTSModel:
             best_score,
             job_id,
         )
+
+    def _synthesize_without_verification(
+        self,
+        request: TTSRequestDTO,
+        ref_audio_bytes: bytes,
+    ) -> SynthesisResultDTO:
+        result = self._synthesize_once(
+            request=request,
+            ref_audio_bytes=ref_audio_bytes,
+        )
+
+        logger.info(result.format_log(request))
+        return result
 
     def synthesize(
         self,

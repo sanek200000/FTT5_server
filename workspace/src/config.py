@@ -16,8 +16,16 @@ SAFETENSORS_MISHA = MODELS_PATH.joinpath(
 )
 VOCAB_MISHA = MODELS_PATH.joinpath("F5-TTS_RUSSIAN_misha/F5TTS_v1_Base/vocab.txt")
 
-DEVICE = "cpu"
-# DEVICE = "cuda"
+
+class Settings(BaseSettings):
+    COMPOSE_PROFILES: str
+
+    URL_VOCAB: str
+    URL_MODEL_SAFETENSORS: str
+
+
+SS = Settings()
+DEVICE = SS.COMPOSE_PROFILES
 
 
 def should_rotate_on_start(message, file):
@@ -34,11 +42,5 @@ logger.add(
     retention=10,
 )
 
-
-class Settings(BaseSettings):
-    pass
-
-
-SS = Settings()
 if __name__ == "__main__":
     [print(f"{key} = {value}") for key, value in globals().items() if not key.startswith("__")]
