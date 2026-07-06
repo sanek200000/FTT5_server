@@ -23,7 +23,7 @@ class TextSimilarityService:
         token_ratio: float,
         partial_ratio: float,
     ) -> float:
-        return max(ratio, token_ratio, partial_ratio)
+        return min(ratio, token_ratio, partial_ratio)
 
     @classmethod
     def similarity(

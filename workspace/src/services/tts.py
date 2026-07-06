@@ -1,11 +1,11 @@
 import time
 import soundfile as sf
 from loguru import logger
-from random import randint
 from typing import Optional
 
 from f5_tts.api import F5TTS
 
+from src.services.generation_plan import GenerationPlanBuilder
 from src.schemas.job import JobStatus
 from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
@@ -136,20 +136,20 @@ class TTSModel:
             stretch_ratio=stretch_ratio,
         )
 
-    def _prepare_attempt_request(
-        self,
-        request: TTSRequestDTO,
-        attempt: int,
-    ) -> TTSRequestDTO:
-        current_request = request.model_copy(deep=True)
-
-        if attempt > 1:
-            current_request.seed = randint(0, 2**32 - 1)
-
-        if attempt > 3:
-            current_request.speed = max(0.5, request.speed - 0.1 * (attempt - 3))
-
-        return current_request
+    # def _prepare_attempt_request(
+    #     self,
+    #     request: TTSRequestDTO,
+    #     attempt: int,
+    # ) -> TTSRequestDTO:
+    #     current_request = request.model_copy(deep=True)
+    #
+    #     if attempt > 1:
+    #         current_request.seed = randint(0, 2**32 - 1)
+    #
+    #     if attempt > 3:
+    #         current_request.speed = max(0.5, request.speed - 0.1 * (attempt - 3))
+    #
+    #     return current_request
 
     def _register_attempt(
         self,
@@ -253,8 +253,14 @@ class TTSModel:
         best_request: Optional[TTSRequestDTO] = None
         best_score = -1.0
 
-        for attempt in range(1, request.max_attempts + 1):
-            current_request = self._prepare_attempt_request(request, attempt)
+        plan = GenerationPlanBuilder.build(request)
+        request.max_attempts = plan.max_attempts
+
+        for attempt, params in enumerate(plan.attempts, start=1):
+            # current_request = self._prepare_attempt_request(request, attempt)
+            current_request = request.model_copy(deep=True)
+            current_request.seed = params.seed
+            current_request.speed = params.speed
 
             result = self._synthesize_once(
                 request=current_request,

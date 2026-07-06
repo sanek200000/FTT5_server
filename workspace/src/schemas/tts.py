@@ -38,7 +38,7 @@ class TTSRequestDTO(BaseModel):
 
     match_duration: bool = False
 
-    max_attempts: int = Field(default=9, ge=1, le=10)
+    max_attempts: int
     min_similarity: float = Field(default=95.0, ge=0.0, le=100.0)
     accept_similarity: float = 90.0
     verify_with_whisper: bool = True
@@ -51,6 +51,19 @@ class AttemptDTO(BaseModel):
     similarity: float
     recognized_text: str
     generation_time: float
+
+
+class GenerationAttemptDTO(BaseModel):
+    seed: Optional[int]
+    speed: float
+
+
+class GenerationPlanDTO(BaseModel):
+    attempts: list[GenerationAttemptDTO]
+
+    @property
+    def max_attempts(self) -> int:
+        return len(self.attempts)
 
 
 class SynthesisResultDTO(BaseModel):
