@@ -6,12 +6,12 @@ from typing import Optional
 from f5_tts.api import F5TTS
 
 from src.services.generation_plan import GenerationPlanBuilder
-from src.schemas.job import JobStatus
 from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
 from src.services.audio_processor import AudioProcessor
 from src.exceptions import SynthesisException
 from src.schemas.tts import AttemptDTO, SynthesisResultDTO, TTSRequestDTO
+from src.schemas.job import JobStatus
 from src.services.temp_files import TempFiles
 from src.services.job import job_manager
 from src.config import DEVICE, SAFETENSORS_MISHA, VOCAB_MISHA
@@ -232,6 +232,7 @@ class TTSModel:
                 f"Best similarity ({best_score:.2f}%) "
                 f"is below accept threshold "
                 f"({request.accept_similarity:.2f}%)"
+                f"Result: {best_result.format_log(best_request)}"
             )
 
         best_result.attempt_history = attempt_history
@@ -274,6 +275,7 @@ class TTSModel:
                     current_attempt=attempt,
                     similarity=score,
                     speed=current_request.speed,
+                    max_attempts=plan.max_attempts,
                 )
 
             self._register_attempt(attempt_history, attempt, current_request, result, score)
@@ -300,6 +302,8 @@ class TTSModel:
                         similarity=score,
                     )
                 return result
+            else:
+                logger.warning(result.format_log(current_request))
 
         return self._finalize_best_result(
             request,

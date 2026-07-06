@@ -16,7 +16,7 @@ class WhisperService:
     def transcribe(self, wav_path: Path) -> str:
         segments, _ = self._model.transcribe(
             str(wav_path),
-            # language="ru",
+            language="ru",
             beam_size=5,
         )
 

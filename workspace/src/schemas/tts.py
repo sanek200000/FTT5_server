@@ -38,7 +38,7 @@ class TTSRequestDTO(BaseModel):
 
     match_duration: bool = False
 
-    max_attempts: int
+    max_attempts: Optional[int] = None
     min_similarity: float = Field(default=95.0, ge=0.0, le=100.0)
     accept_similarity: float = 90.0
     verify_with_whisper: bool = True

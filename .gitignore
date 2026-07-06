@@ -5,6 +5,7 @@ __pycache__/
 
 # my extensions
 **/temp/
+workspace/models/*
 
 # C extensions
 *.so

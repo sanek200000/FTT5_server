@@ -5,6 +5,7 @@ from src.schemas.tts import GenerationAttemptDTO, GenerationPlanDTO, TTSRequestD
 
 class GenerationPlanBuilder:
     SHORT_SENTENCE_WORDS = 3
+    SPEEDS = (1.00, 0.95, 0.9, 0.85, 0.80)
 
     @staticmethod
     def _random_seed() -> int:
@@ -12,20 +13,19 @@ class GenerationPlanBuilder:
 
     @classmethod
     def _build_short(cls, request: TTSRequestDTO) -> GenerationPlanDTO:
-        speeds = (1.00, 0.95, 0.9, 0.85, 0.80)
         attempts = list()
 
         for _ in range(20):
             attempts.append(
                 GenerationAttemptDTO(
                     seed=cls._random_seed(),
-                    speed=speeds[_ % len(speeds)],
+                    speed=cls.SPEEDS[_ % len(cls.SPEEDS)],
                 )
             )
 
         attempts[0].seed = request.seed
 
-        return GenerationPlanDTO(attempts)
+        return GenerationPlanDTO(attempts=attempts)
 
     @classmethod
     def _build_normal(cls, request: TTSRequestDTO) -> GenerationPlanDTO:
@@ -44,10 +44,10 @@ class GenerationPlanBuilder:
                 )
             )
 
-        return GenerationPlanDTO(attempts)
+        return GenerationPlanDTO(attempts=attempts)
 
     @classmethod
-    def duild(cls, request: TTSRequestDTO) -> GenerationPlanDTO:
+    def build(cls, request: TTSRequestDTO) -> GenerationPlanDTO:
         words = len(request.gen_text.split())
 
         if words <= cls.SHORT_SENTENCE_WORDS:

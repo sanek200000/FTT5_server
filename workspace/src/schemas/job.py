@@ -22,7 +22,7 @@ class JobStatusResponseDTO(JobCreateResponseDTO):
     status: JobStatus
 
     current_attempt: int = 0
-    max_attempts: int = 9
+    max_attempts: int = 0
 
     similarity: Optional[float] = None
     speed: Optional[float] = None
