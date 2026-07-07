@@ -5,6 +5,7 @@ from typing import Optional
 
 from f5_tts.api import F5TTS
 
+from services.text_preprocessor import TextPreprocessor
 from src.services.generation_plan import GenerationPlanBuilder
 from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
@@ -100,10 +101,12 @@ class TTSModel:
         ref_duration = ref_info.duration
 
         try:
+            prepared_text = TextPreprocessor.prepare_generation_text(request.gen_text)
+
             wav, sr, _ = self.tts.infer(
                 ref_file=str(ref_path),
                 ref_text=request.ref_text,
-                gen_text=request.gen_text,
+                gen_text=prepared_text,
                 speed=request.speed,
                 remove_silence=request.remove_silence,
                 seed=request.seed,

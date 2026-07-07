@@ -51,7 +51,8 @@ services:
             - driver: nvidia
               count: all # или укажите 1, 2 и т.д.
               capabilities: [gpu]
-    command: poetry run python src/main.py
+    # command: poetry run python src/main.py
+    command: zsh
 
 # ============================================
 # Тома для сохранения данных
