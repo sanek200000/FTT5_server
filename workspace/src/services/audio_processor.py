@@ -1,6 +1,7 @@
 import io
 from pathlib import Path
 
+from loguru import logger
 import numpy as np
 import soundfile as sf
 from audiostretchy.stretch import stretch_audio
@@ -46,17 +47,25 @@ class AudioProcessor:
         current_duration = info.duration
 
         if current_duration <= 0:
+            logger.debug(f"Длительность файла '{str(wav_path)}' меньше 0: {current_duration} сек.")
             return 1.0
 
         ratio = target_duration / current_duration
 
         if abs(ratio - 1.0) < 0.01:
+            logger.debug("Отклонение целевой и реальной длинны файла < 1%")
             return 1.0
 
         stretch_audio(
             input_path=str(wav_path),
             output_path=str(wav_path),
             ratio=ratio,
+        )
+        logger.info(
+            "\n----------------------------------------------------------\n"
+            f"Длительность файла '{str(wav_path)}' {current_duration} сек. приведена к целевой {target_duration} сек.\n"
+            f"Коэффициент растяжения/сжатия = {ratio}"
+            "\n----------------------------------------------------------\n"
         )
         return ratio
 
@@ -74,21 +83,29 @@ class AudioProcessor:
             float: порог тишины в dBFS.
         """
         if audio.rms == 0:
+            logger.warning("Аудиосигнал пустой (RMS = 0). Возвращен дефолтный порог -60.0 dBFS.")
             return -60.0
 
         rms_db = audio.dBFS
+        logger.debug(f"Исходная средняя громкость аудио (dBFS): {rms_db:.2f}")
 
-        threshold = rms_db - 18
-        threshold = max(threshold, -55)
+        base_threshold = rms_db - 18
+        threshold = max(base_threshold, -55)
         threshold = min(threshold, -25)
 
+        logger.debug(
+            "\n----------------------------------------------------------\n"
+            f"Расчет окончен. Базовый (без ограничений): {base_threshold:.2f} dBFS. \n"
+            f"Итоговый (с ограничениями): {threshold:.2f} dBFS."
+            "\n----------------------------------------------------------\n"
+        )
         return threshold
 
     @staticmethod
     def trim_silence(
         wav: np.ndarray,
         sample_rate: int,
-        min_silence_len: int = 80,
+        min_silence_len: int = 200,  # было 80
         keep_silence: int = 30,
     ) -> np.ndarray:
         """
@@ -115,22 +132,31 @@ class AudioProcessor:
             - если сегменты не найдены, возвращает исходный wav
         """
 
-        buffer = io.BytesIO()
-
-        sf.write(
-            buffer,
-            wav,
-            sample_rate,
-            format="WAV",
+        logger.info(
+            f"Старт trim_silence: Сэмплов={len(wav)}, Sample Rate={sample_rate}Hz, "
+            f"min_silence_len={min_silence_len}ms, keep_silence={keep_silence}ms"
         )
 
+        # Конвертация numpy → WAV buffe
+        buffer = io.BytesIO()
+        sf.write(buffer, wav, sample_rate, format="WAV")
         buffer.seek(0)
 
         audio = AudioSegment.from_file(buffer, format="wav")
+        total_duration = len(audio)
 
+        # Фильтруем низкочастотный ИИ-гул (sub-bass) перед детекцией.
+        # Это не меняет финальный звук, но убирает невидимый шум, мешающий определять тишину.
+        analysis_audio = audio.high_pass_filter(60)
+
+        # Динамический расчет порога
         silence_thresh = AudioProcessor._clalculate_silence_threshold(audio)
-        print(f"[AudioProcessor] " f"dBFS={audio.dBFS:.1f} " f"threshold={silence_thresh:.1f}")
+        logger.info(
+            f"Анализ аудио: Длительность={total_duration}ms, "
+            f"Общая громкость dBFS={audio.dBFS:.2f}, Порог тишины={silence_thresh:.2f} dBFS"
+        )
 
+        # Детекция активных (не-тихих) сегментов
         regions = detect_nonsilent(
             audio,
             min_silence_len=min_silence_len,
@@ -138,20 +164,33 @@ class AudioProcessor:
         )
 
         if not regions:
+            logger.warning("Активные звуковые сегменты не найдены. Возвращаем исходный массив.")
             return wav
 
+        logger.info(f"Найдено активных сегментов: {len(regions)}")
+        logger.info(f"Первый сегмент: {regions[0]}, Последний сегмент: {regions[-1]}")
+
         start = max(0, regions[0][0] - keep_silence)
+        end = min(total_duration, regions[-1][1] + keep_silence)
+        trimmed_duration = end - start
+        logger.info(
+            f"Результат обрезки: {start}ms -> {end}ms. "
+            f"Отрезано с начала: {start}ms, Отрезано с конца: {total_duration - end}ms. "
+            f"Новая длительность: {trimmed_duration}ms"
+        )
 
-        end = min(len(audio), regions[-1][1] + keep_silence)
+        # Если фактически ничего не изменилось, возвращаем оригинал без лишних пересборок
+        if start == 0 and end == total_duration:
+            logger.debug("Изменений не требуется, возвращаем исходный массив.")
+            return wav
 
+        # Обрезка оригинального (!) аудио по вычисленным меткам
         trimmed = audio[start:end]
 
+        # Восстановление numpy массива
         out = io.BytesIO()
-
         trimmed.export(out, format="wav")
-
         out.seek(0)
 
         result, _ = sf.read(out, dtype="float32")
-
         return result

@@ -49,6 +49,7 @@ class TTSModel:
             self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
         except Exception as ex:
             logger.error(f"{type(ex)}: {ex}")
+            raise
         logger.info("F5-TTS loaded.")
 
         self._whisper = WhisperService()
