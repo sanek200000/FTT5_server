@@ -89,9 +89,9 @@ class AudioProcessor:
         rms_db = audio.dBFS
         logger.debug(f"Исходная средняя громкость аудио (dBFS): {rms_db:.2f}")
 
-        base_threshold = rms_db - 18
+        base_threshold = rms_db - 28
         threshold = max(base_threshold, -55)
-        threshold = min(threshold, -25)
+        threshold = min(threshold, -48)
 
         logger.debug(
             "\n----------------------------------------------------------\n"
@@ -147,18 +147,18 @@ class AudioProcessor:
 
         # Фильтруем низкочастотный ИИ-гул (sub-bass) перед детекцией.
         # Это не меняет финальный звук, но убирает невидимый шум, мешающий определять тишину.
-        analysis_audio = audio.high_pass_filter(60)
+        analysis_audio = audio.high_pass_filter(60).low_pass_filter(8000)
 
         # Динамический расчет порога
-        silence_thresh = AudioProcessor._clalculate_silence_threshold(audio)
+        silence_thresh = AudioProcessor._clalculate_silence_threshold(analysis_audio)
         logger.info(
             f"Анализ аудио: Длительность={total_duration}ms, "
-            f"Общая громкость dBFS={audio.dBFS:.2f}, Порог тишины={silence_thresh:.2f} dBFS"
+            f"Общая громкость dBFS={analysis_audio.dBFS:.2f}, Порог тишины={silence_thresh:.2f} dBFS"
         )
 
         # Детекция активных (не-тихих) сегментов
         regions = detect_nonsilent(
-            audio,
+            analysis_audio,
             min_silence_len=min_silence_len,
             silence_thresh=silence_thresh,
         )

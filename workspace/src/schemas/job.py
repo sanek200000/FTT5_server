@@ -10,7 +10,7 @@ from src.schemas.tts import SynthesisResultDTO
 class JobStatus(StrEnum):
     QUEUED = "queued"
     PROGRESSING = "progressing"
-    COMPLETED = "comleted"
+    COMPLETED = "completed"
     FAILED = "failed"
 
 

@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from re import NOFLAG
 from uuid import uuid4
 
 from loguru import logger
@@ -37,16 +36,23 @@ class JobManager:
     def update(self, job_id, **kwargs) -> None:
         job = self._jobs.get(job_id)
         if job is None:
-            logger.error(f"Job '{job_id}' not found")
-            raise KeyError(f"Job '{job_id}' not found")
+            detail = f"Job '{job_id}' not found"
+            logger.error(detail)
+            raise KeyError(detail)
 
         kwargs["updated_at"] = datetime.now(UTC)
         try:
-            updated_job = job.model_copy(update=kwargs, deep=True)
+            data = job.model_dump()
+            data.update(kwargs)
+
+            # updated_job = job.model_copy(update=kwargs, deep=True)
+            updated_job = JobInternalDTO.model_validate(data)
+
             self._jobs[job_id] = updated_job
         except Exception as ex:
-            logger.error(f"ошибка валидации при обновлении задачи: {ex}")
-            raise ValueError(f"ошибка валидации при обновлении задачи: {ex}")
+            detail = f"ошибка валидации при обновлении задачи: {ex}"
+            logger.error(detail)
+            raise ValueError(detail)
 
     def delete(self, job_id: str) -> None:
         self._jobs.pop(job_id, None)
