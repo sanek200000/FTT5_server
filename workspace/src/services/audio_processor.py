@@ -91,7 +91,7 @@ class AudioProcessor:
     def build_pause_edit_plan(reference: ListRegionsDTO, generated: ListRegionsDTO) -> PauseEditPlanDTO:
         scale = AudioProcessor.calculate_pause_scale(reference, generated)
 
-        plan = PauseEditPlanDTO()
+        plan = PauseEditPlanDTO(scale=scale.scale)
 
         ref_stats = reference.statistics
         for region in generated.regions:
@@ -170,22 +170,28 @@ class AudioProcessor:
         return output
 
     @staticmethod
-    def extract_segments(
-        wav_path: Path,
-        segments: list[tuple[float, float]],
-    ) -> list[Path]: ...
+    def duration(wav_path: Path) -> float:
+        info = sf.info(wav_path)
+        return info.duration
 
     @staticmethod
-    def trim_edges(wav_path: Path) -> None:
-        raise NotImplementedError
+    def adjust_pauses(reference_wav: Path, generated_wav: Path) -> Path:
+        reference_regions = AudioProcessor.analyze(reference_wav)
+        logger.info("Reference pauses:" + reference_regions.format_log())
 
-    @staticmethod
-    def compress_pauses(wav_path: Path, target_pause: float) -> None:
-        raise NotImplementedError
+        generated_regions = AudioProcessor.analyze(generated_wav)
+        logger.info("Generated pauses:" + generated_regions.format_log())
 
-    @staticmethod
-    def fit_duration(wav_path: Path, target_duration: float) -> float:
-        raise NotImplementedError
+        plan = AudioProcessor.build_pause_edit_plan(
+            reference=reference_regions,
+            generated=generated_regions,
+        )
+        logger.info(f"Pause scale={plan.scale if hasattr(plan, 'scale') else 'unknown'}")
+
+        return AudioProcessor.rewrite_pauses(
+            wav_path=generated_wav,
+            plan=plan,
+        )
 
 
 class AudioProcessor_old:

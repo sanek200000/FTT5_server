@@ -83,8 +83,8 @@ async def tts_endpoint(
     ref_text: str = Form(examples=["Hello"]),
     gen_text: str = Form(examples=["Привет"]),
     speed: float = Form(1.0),
-    # remove_silence=Form(True),
-    # match_duration=Form(True),
+    remove_silence=Form(False),
+    match_duration=Form(False),
     seed: Optional[int] = Form(None),
 ):
     tts = tts_request.app.state.tts
@@ -97,8 +97,8 @@ async def tts_endpoint(
         ref_text=ref_text,
         gen_text=gen_text,
         speed=speed,
-        # remove_silence=remove_silence,
-        # match_duration=match_duration,
+        remove_silence=remove_silence,
+        match_duration=match_duration,
         seed=seed,
     )
 

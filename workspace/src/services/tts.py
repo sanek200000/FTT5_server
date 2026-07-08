@@ -115,22 +115,26 @@ class TTSModel:
         except Exception as ex:
             raise SynthesisException(str(ex))
 
-        if request.remove_silence:
-            AudioProcessor.analyze(wav)
-            # wav = AudioProcessor.trim_silence(wav, sr)
+        # if request.remove_silence:
+        # AudioProcessor.analyze(wav)
+        # wav = AudioProcessor.trim_silence(wav, sr)
 
         generation_time = time.perf_counter() - started
-        result_duration = len(wav) / sr
+        # result_duration = len(wav) / sr
 
         out_path = TempFiles.create_output()
         sf.write(out_path, wav, sr)
 
         stretch_ratio = 1.0
         if request.match_duration:
-            stretch_ratio = AudioProcessor.match_duration(
-                wav_path=out_path,
-                target_duration=ref_duration,
+            adjusted_path = AudioProcessor.adjusted_path(
+                reference_wav=ref_path,
+                generated_wav=out_path,
             )
+            out_path.unlink(missing_ok=True)
+            out_path = adjusted_path
+
+        result_duration = AudioProcessor.duration(out_path)
 
         return SynthesisResultDTO(
             ref_path=ref_path,

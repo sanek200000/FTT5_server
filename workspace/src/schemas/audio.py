@@ -105,6 +105,7 @@ class PauseEditDTO(BaseModel):
 
 
 class PauseEditPlanDTO(BaseModel):
+    scale: float = 1.0
     edits: list[PauseEditDTO] = list()
 
     @property
