@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import io
 from pathlib import Path
 
@@ -9,8 +10,29 @@ from audiostretchy.stretch import stretch_audio
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
+from src.schemas.audio import SilenceRegion
 
-class AudioProcessor:
+
+class Audio_processr:
+
+    @staticmethod
+    def analyze(wav_path: Path) -> list[SilenceRegion]:
+        raise NotImplementedError
+
+    @staticmethod
+    def trim_edges(wav_path: Path) -> None:
+        raise NotImplementedError
+
+    @staticmethod
+    def compress_pauses(wav_path: Path, target_pause: float) -> None:
+        raise NotImplementedError
+
+    @staticmethod
+    def fit_duration(wav_path: Path, target_duration: float) -> float:
+        raise NotImplementedError
+
+
+class AudioProcessor_old:
     """
     Утилитарный процессор аудио для постобработки TTS-результатов.
 
