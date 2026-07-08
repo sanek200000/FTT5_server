@@ -110,6 +110,22 @@ class AudioProcessor:
         return plan
 
     @staticmethod
+    def build_segments(regions: ListRegionsDTO, duration: float) -> list[tuple[float, float]]:
+        segments = list()
+        cursor = 0.0
+
+        for region in regions.regions:
+            if region.start > cursor:
+                segments.append(cursor, region.start)
+
+            cursor = region.end
+
+        if cursor < duration:
+            segments.append(cursor, duration)
+
+        return segments
+
+    @staticmethod
     def trim_edges(wav_path: Path) -> None:
         raise NotImplementedError
 
