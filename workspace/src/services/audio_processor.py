@@ -12,7 +12,14 @@ from audiostretchy.stretch import stretch_audio
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
-from src.schemas.audio import ListRegionsDTO, PauseScaleDTO, PauseStatisticDTO, SilenceRegionDTO
+from src.schemas.audio import (
+    ListRegionsDTO,
+    PauseEditDTO,
+    PauseEditPlanDTO,
+    PauseScaleDTO,
+    PauseStatisticDTO,
+    SilenceRegionDTO,
+)
 
 
 class AudioProcessor:
@@ -80,6 +87,27 @@ class AudioProcessor:
             k50=k50,
             k75=k75,
         )
+
+    @staticmethod
+    def build_pause_edit_plan(reference: ListRegionsDTO, generated: ListRegionsDTO) -> PauseEditPlanDTO:
+        scale = AudioProcessor.calculate_pause_scale(reference, generated)
+
+        plan = PauseEditPlanDTO()
+
+        ref_stats = reference.statistics
+        for region in generated.regions:
+            new_duration = region.duration * scale.scale
+            new_duration = max(ref_stats.minimum, new_duration)
+            new_duration = min(ref_stats.maximum, new_duration)
+
+            plan.edits.append(
+                PauseEditDTO(
+                    original=region,
+                    target_duration=new_duration,
+                )
+            )
+
+        return plan
 
     @staticmethod
     def trim_edges(wav_path: Path) -> None:

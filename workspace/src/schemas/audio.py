@@ -97,3 +97,16 @@ class ListRegionsDTO(BaseModel):
             "========================================================"
             "\n"
         )
+
+
+class PauseEditDTO(BaseModel):
+    original: SilenceRegionDTO
+    target_duration: float
+
+
+class PauseEditPlanDTO(BaseModel):
+    edits: list[PauseEditDTO] = list()
+
+    @property
+    def length(self) -> int:
+        return len(self.edits)
