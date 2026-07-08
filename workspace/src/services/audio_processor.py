@@ -36,7 +36,6 @@ class AudioProcessor:
         procces = subprocess.run(
             command,
             shell=True,
-            # check=True,
             capture_output=True,
             text=True,
         )
@@ -116,12 +115,12 @@ class AudioProcessor:
 
         for region in regions.regions:
             if region.start > cursor:
-                segments.append(cursor, region.start)
+                segments.append((cursor, region.start))
 
             cursor = region.end
 
         if cursor < duration:
-            segments.append(cursor, duration)
+            segments.append((cursor, duration))
 
         return segments
 
@@ -146,8 +145,35 @@ class AudioProcessor:
             if i < len(plan.edits):
                 parts.append(f"[sil{i}]")
 
-        concat = "".join(parts) + f"concat=n={len(parts)}:v=0:a=1[uot]"
+        concat = "".join(parts) + f"concat=n={len(parts)}:v=0:a=1[out]"
         return ";\n".join(filters + [concat])
+
+    @staticmethod
+    def rewrite_pauses(wav_path: Path, plan: PauseEditPlanDTO) -> Path:
+        regions = AudioProcessor.analyze(wav_path)
+        info = sf.info(wav_path)
+
+        segments = AudioProcessor.build_segments(regions, duration=info.duration)
+        filter_complex = AudioProcessor._build_filter_complex(segments, plan)
+        output = wav_path.with_stem(f"{wav_path.stem}_pauses")
+
+        command = f"ffmpeg -y -i {str(wav_path)} -filter_complex {filter_complex} -map [out] {str(output)}"
+        logger.debug(f"Command: {command}")
+
+        procces = subprocess.run(command, shell=True, capture_output=True, text=True)
+
+        if procces.returncode != 0:
+            detail = procces.stderr
+            logger.error(detail)
+            raise RuntimeError(detail)
+
+        return output
+
+    @staticmethod
+    def extract_segments(
+        wav_path: Path,
+        segments: list[tuple[float, float]],
+    ) -> list[Path]: ...
 
     @staticmethod
     def trim_edges(wav_path: Path) -> None:
@@ -163,38 +189,9 @@ class AudioProcessor:
 
 
 class AudioProcessor_old:
-    """
-    Утилитарный процессор аудио для постобработки TTS-результатов.
-
-    Предоставляет операции:
-    - нормализация длительности аудио (time-stretch)
-    - удаление тишины на основе энергетического анализа сигнала
-
-    Использует комбинацию:
-    - soundfile (I/O WAV)
-    - pydub (анализ и сегментация тишины)
-    - audiostretchy (time stretching без изменения pitch)
-    """
 
     @staticmethod
     def match_duration(wav_path: Path, target_duration: float) -> float:
-        """
-        Приводит длительность аудиофайла к целевой.
-
-        Вычисляет коэффициент растяжения и применяет time-stretch
-        к WAV-файлу in-place.
-
-        Args:
-            wav_path (Path): путь к WAV-файлу (будет изменён).
-            target_duration (float): целевая длительность в секундах.
-
-        Returns:
-            float: коэффициент растяжения (ratio).
-
-        Notes:
-            - если отклонение < 1%, операция пропускается
-            - используется audiostretchy.stretch_audio
-        """
         info = sf.info(wav_path)
         current_duration = info.duration
 
@@ -223,17 +220,6 @@ class AudioProcessor_old:
 
     @staticmethod
     def _clalculate_silence_threshold(audio: AudioSegment) -> float:
-        """
-        Вычисляет порог тишины для аудиосегмента.
-
-        Основан на уровне громкости (dBFS) с ограничениями диапазона.
-
-        Args:
-            audio (AudioSegment): входной аудиосигнал.
-
-        Returns:
-            float: порог тишины в dBFS.
-        """
         if audio.rms == 0:
             logger.warning("Аудиосигнал пустой (RMS = 0). Возвращен дефолтный порог -60.0 dBFS.")
             return -60.0
@@ -260,29 +246,6 @@ class AudioProcessor_old:
         min_silence_len: int = 200,  # было 80
         keep_silence: int = 30,
     ) -> np.ndarray:
-        """
-        Удаляет тишину в начале и конце аудиосигнала.
-
-        Выполняет:
-        - конвертацию numpy → WAV buffer
-        - детекцию ненулевых сегментов
-        - обрезку по границам активности
-        - восстановление numpy массива
-
-        Args:
-            wav (np.ndarray): аудиосигнал.
-            sample_rate (int): частота дискретизации.
-            min_silence_len (int): минимальная длина тишины (ms).
-            keep_silence (int): запас тишины вокруг сегмента (ms).
-
-        Returns:
-            np.ndarray: обрезанный аудиосигнал.
-
-        Notes:
-            - используется pydub.detect_nonsilent
-            - порог вычисляется динамически через dBFS
-            - если сегменты не найдены, возвращает исходный wav
-        """
 
         logger.info(
             f"Старт trim_silence: Сэмплов={len(wav)}, Sample Rate={sample_rate}Hz, "
