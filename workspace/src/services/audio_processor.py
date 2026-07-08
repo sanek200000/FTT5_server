@@ -126,6 +126,30 @@ class AudioProcessor:
         return segments
 
     @staticmethod
+    def _build_filter_complex(
+        segments: list[tuple[float, float]],
+        plan: PauseEditPlanDTO,
+    ) -> str:
+        filters = list()
+
+        for i, (start, end) in enumerate(segments):
+            filters.append(f"[0:a]atrim=start={start:.3f}:end={end:.3f}," f"asetpts=PTS-STARTPTS[s{i}]")
+
+        for i, pause in enumerate(plan.edits):
+            filters.append(f"aevalsrc=0:d={pause.target_duration:.3f}[sil{i}]")
+
+        parts = list()
+
+        for i in range(len(segments)):
+            parts.append(f"[s{i}]")
+
+            if i < len(plan.edits):
+                parts.append(f"[sil{i}]")
+
+        concat = "".join(parts) + f"concat=n={len(parts)}:v=0:a=1[uot]"
+        return ";\n".join(filters + [concat])
+
+    @staticmethod
     def trim_edges(wav_path: Path) -> None:
         raise NotImplementedError
 
