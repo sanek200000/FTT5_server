@@ -1,5 +1,6 @@
 import io
 import re
+from statistics import median
 import subprocess
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from audiostretchy.stretch import stretch_audio
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
-from src.schemas.audio import ListRegionsDTO, PauseStatisticDTO, SilenceRegionDTO
+from src.schemas.audio import ListRegionsDTO, PauseScaleDTO, PauseStatisticDTO, SilenceRegionDTO
 
 
 class AudioProcessor:
@@ -54,6 +55,31 @@ class AudioProcessor:
         logger.debug(regions.format_log())
 
         return regions
+
+    @staticmethod
+    def calculate_pause_scale(reference: ListRegionsDTO, generated: ListRegionsDTO) -> PauseScaleDTO:
+        ref = reference.statistics
+        gen = generated.statistics
+
+        def safe_div(a: float, b: float) -> float:
+            if b <= 0:
+                return 1.0
+            return a / b
+
+        k25 = safe_div(ref.p25, gen.p25)
+        k50 = safe_div(ref.median, gen.median)
+        k75 = safe_div(ref.p75, gen.p75)
+
+        scale = median([k25, k50, k75])
+
+        return PauseScaleDTO(
+            scale=scale,
+            reference=ref,
+            generated=gen,
+            k25=k25,
+            k50=k50,
+            k75=k75,
+        )
 
     @staticmethod
     def trim_edges(wav_path: Path) -> None:

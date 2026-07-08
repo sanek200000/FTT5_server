@@ -2,6 +2,28 @@ from pydantic import BaseModel
 from statistics import median, mean
 
 
+class PauseStatisticDTO(BaseModel):
+    minimum: float = 0.0
+    maximum: float = 0.0
+
+    median: float = 0.0
+    average: float = 0.0
+
+    p25: float = 0.0
+    p75: float = 0.0
+
+
+class PauseScaleDTO(BaseModel):
+    scale: float = 1.0
+
+    reference: PauseStatisticDTO
+    generated: PauseStatisticDTO
+
+    k25: float = 1.0
+    k50: float = 1.0
+    k75: float = 1.0
+
+
 class SilenceRegionDTO(BaseModel):
     start: float
     end: float
@@ -75,14 +97,3 @@ class ListRegionsDTO(BaseModel):
             "========================================================"
             "\n"
         )
-
-
-class PauseStatisticDTO(BaseModel):
-    minimum: float = 0.0
-    maximum: float = 0.0
-
-    median: float = 0.0
-    average: float = 0.0
-
-    p25: float = 0.0
-    p75: float = 0.0
