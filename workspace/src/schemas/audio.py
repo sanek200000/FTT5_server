@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from statistics import median, mean
 
 
 class SilenceRegionDTO(BaseModel):
@@ -17,8 +18,42 @@ class ListRegionsDTO(BaseModel):
     def length(self) -> int:
         return len(self.regions)
 
+    @property
+    def statistics(self) -> PauseStatisticDTO:
+        pauses = [region.duration for region in self.regions]
+
+        if not pauses:
+            return PauseStatisticDTO()
+
+        pauses.sort()
+
+        def percentile(values: list[float], p: float) -> float:
+            if len(values) == 1:
+                return values[0]
+
+            index = (len(values) - 1) * p
+            lower = int(index)
+            upper = min(lower + 1, len(values) - 1)
+
+            if lower == upper:
+                return values[lower]
+
+            fraction = index - lower
+
+            return values[lower] + (values[upper] - values[lower]) * fraction
+
+        return PauseStatisticDTO(
+            minimum=pauses[0],
+            maximum=pauses[-1],
+            average=mean(pauses),
+            median=median(pauses),
+            p25=percentile(pauses, 0.25),
+            p75=percentile(pauses, 0.75),
+        )
+
     def format_log(self):
         result = list()
+        stats = self.statistics
 
         for region in self.regions:
             result.append(f"Silence: " f"{region.start:.3f}s -> " f"{region.end:.3f}s " f"({region.duration:.3f}s)\n")
@@ -28,6 +63,26 @@ class ListRegionsDTO(BaseModel):
             "Regions\n"
             "--------------------------------------------------------\n"
             f'{"".join(result)}'
+            "--------------------------------------------------------\n"
+            "Statistics\n"
+            "--------------------------------------------------------\n"
+            f"min     : {stats.minimum:.3f}\n"
+            f"p25     : {stats.p25:.3f}\n"
+            f"median  : {stats.median:.3f}\n"
+            f"mean    : {stats.average:.3f}\n"
+            f"p75     : {stats.p75:.3f}\n"
+            f"max     : {stats.maximum:.3f}\n"
             "========================================================"
             "\n"
         )
+
+
+class PauseStatisticDTO(BaseModel):
+    minimum: float = 0.0
+    maximum: float = 0.0
+
+    median: float = 0.0
+    average: float = 0.0
+
+    p25: float = 0.0
+    p75: float = 0.0

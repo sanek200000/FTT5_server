@@ -2,7 +2,6 @@ import io
 import re
 import subprocess
 from pathlib import Path
-import sys
 
 import numpy as np
 import soundfile as sf
@@ -12,8 +11,7 @@ from audiostretchy.stretch import stretch_audio
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
-sys.path.append(str(Path(__file__).parent.parent.parent))
-from src.schemas.audio import ListRegionsDTO, SilenceRegionDTO
+from src.schemas.audio import ListRegionsDTO, PauseStatisticDTO, SilenceRegionDTO
 
 
 class AudioProcessor:
