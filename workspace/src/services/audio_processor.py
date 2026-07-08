@@ -1,23 +1,61 @@
-from dataclasses import dataclass
 import io
+import re
+import subprocess
 from pathlib import Path
+import sys
 
-from loguru import logger
 import numpy as np
 import soundfile as sf
+from loguru import logger
 from audiostretchy.stretch import stretch_audio
 
 from pydub import AudioSegment
 from pydub.silence import detect_nonsilent
 
-from src.schemas.audio import SilenceRegion
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from src.schemas.audio import ListRegionsDTO, SilenceRegionDTO
 
 
-class Audio_processr:
+class AudioProcessor:
 
     @staticmethod
-    def analyze(wav_path: Path) -> list[SilenceRegion]:
-        raise NotImplementedError
+    def analyze(
+        wav_path: Path,
+        noise: float = -35,
+        min_duration: float = 0.1,
+    ) -> ListRegionsDTO:
+        command = f"ffmpeg -i {str(wav_path)} -af silencedetect={noise}dB:d={min_duration} -f null -"
+        logger.info(f"Command: '{command}'")
+
+        procces = subprocess.run(
+            command,
+            shell=True,
+            # check=True,
+            capture_output=True,
+            text=True,
+        )
+        stderr = procces.stderr
+
+        silence_start_pattern = re.compile(r"silence_start:\s*([\d.]+)")
+        silence_end_pattern = re.compile(r"silence_end:\s*([\d.]+)")
+
+        starts = [float(match.group(1)) for match in silence_start_pattern.finditer(stderr)]
+        ends = [float(match.group(1)) for match in silence_end_pattern.finditer(stderr)]
+
+        regions = ListRegionsDTO(
+            regions=[
+                SilenceRegionDTO(
+                    start=start,
+                    end=end,
+                )
+                for start, end in zip(starts, ends)
+            ]
+        )
+
+        logger.debug(f"Detected {regions.length} silence regions")
+        logger.debug(regions.format_log())
+
+        return regions
 
     @staticmethod
     def trim_edges(wav_path: Path) -> None:

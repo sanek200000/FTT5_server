@@ -116,7 +116,8 @@ class TTSModel:
             raise SynthesisException(str(ex))
 
         if request.remove_silence:
-            wav = AudioProcessor.trim_silence(wav, sr)
+            AudioProcessor.analyze(wav)
+            # wav = AudioProcessor.trim_silence(wav, sr)
 
         generation_time = time.perf_counter() - started
         result_duration = len(wav) / sr
