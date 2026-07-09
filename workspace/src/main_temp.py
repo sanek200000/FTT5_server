@@ -9,4 +9,8 @@ from src.services.audio_processor import AudioProcessor
 if __name__ == "__main__":
     # save_structure()
 
-    AudioProcessor.analyze(wav_path=Path("/workspace/gmas_abli_albik_z_u_zvlastni_t_oUOw.wav"))
+    # AudioProcessor.analyze(wav_path=Path("/workspace/ru.wav"))
+    AudioProcessor.adjust_pauses(
+        reference_wav=Path("/workspace/en.wav"),
+        generated_wav=Path("/workspace/ru.wav"),
+    )

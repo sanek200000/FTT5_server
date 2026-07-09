@@ -127,7 +127,7 @@ class TTSModel:
 
         stretch_ratio = 1.0
         if request.match_duration:
-            adjusted_path = AudioProcessor.adjusted_path(
+            adjusted_path = AudioProcessor.adjust_pauses(
                 reference_wav=ref_path,
                 generated_wav=out_path,
             )

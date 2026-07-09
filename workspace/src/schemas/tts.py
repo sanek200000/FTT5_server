@@ -43,6 +43,25 @@ class TTSRequestDTO(BaseModel):
     accept_similarity: float = 90.0
     verify_with_whisper: bool = True
 
+    def format_log(self) -> str:
+        return (
+            "\n"
+            "========================================================\n"
+            "Request\n"
+            "--------------------------------------------------------\n"
+            f"ref_text                : {self.ref_text}\n"
+            f"gen_text                : {self.gen_text}\n"
+            f"speed                   : {self.speed:.2f}\n"
+            f"remove_silence          : {self.remove_silence}\n"
+            f"match_duration          : {self.match_duration}\n"
+            f"max_attempts            : {self.max_attempts}\n"
+            f"min_similarity          : {self.min_similarity}\n"
+            f"accept_similarity       : {self.accept_similarity}\n"
+            f"verify_with_whisper     : {self.verify_with_whisper}\n"
+            "========================================================"
+            "\n"
+        )
+
 
 class AttemptDTO(BaseModel):
     attempt: int
@@ -96,15 +115,18 @@ class SynthesisResultDTO(BaseModel):
             for item in self.attempt_history
         )
 
+        request_log = "\n".join(request.format_log().splitlines()[4:-2])
+
         return (
             "\n"
             "========================================================\n"
             "Request\n"
             "--------------------------------------------------------\n"
-            f"ref_text : {request.ref_text}\n"
-            f"gen_text : {request.gen_text}\n"
-            f"speed    : {request.speed:.2f}\n"
-            f"seed     : {request.seed}\n"
+            # f"ref_text : {request.ref_text}\n"
+            # f"gen_text : {request.gen_text}\n"
+            # f"speed    : {request.speed:.2f}\n"
+            # f"seed     : {request.seed}\n"
+            f"{request_log}"
             "\n"
             "Generation\n"
             "--------------------------------------------------------\n"

@@ -97,10 +97,11 @@ async def tts_endpoint(
         ref_text=ref_text,
         gen_text=gen_text,
         speed=speed,
-        remove_silence=remove_silence,
-        match_duration=match_duration,
+        remove_silence=False,
+        match_duration=False,
         seed=seed,
     )
+    logger.info(request.format_log())
 
     job_id = job_manager.create_job()
 

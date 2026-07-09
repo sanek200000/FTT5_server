@@ -17,7 +17,6 @@ from src.schemas.audio import (
     PauseEditDTO,
     PauseEditPlanDTO,
     PauseScaleDTO,
-    PauseStatisticDTO,
     SilenceRegionDTO,
 )
 
@@ -58,7 +57,7 @@ class AudioProcessor:
         )
 
         logger.debug(f"Detected {regions.length} silence regions")
-        logger.debug(regions.format_log())
+        # logger.debug(regions.format_log())
 
         return regions
 
@@ -106,6 +105,7 @@ class AudioProcessor:
                 )
             )
 
+        logger.debug(f"Plan: {plan.format_log()}")
         return plan
 
     @staticmethod
@@ -122,6 +122,8 @@ class AudioProcessor:
         if cursor < duration:
             segments.append((cursor, duration))
 
+        detail = "\n".join(str(segment) for segment in segments)
+        logger.debug(f"Segments: \n{detail}")
         return segments
 
     @staticmethod
@@ -151,16 +153,30 @@ class AudioProcessor:
     @staticmethod
     def rewrite_pauses(wav_path: Path, plan: PauseEditPlanDTO) -> Path:
         regions = AudioProcessor.analyze(wav_path)
+        logger.info(f"Generated ({str(wav_path)}) pauses:" + regions.format_log())
+
         info = sf.info(wav_path)
 
         segments = AudioProcessor.build_segments(regions, duration=info.duration)
         filter_complex = AudioProcessor._build_filter_complex(segments, plan)
         output = wav_path.with_stem(f"{wav_path.stem}_pauses")
 
-        command = f"ffmpeg -y -i {str(wav_path)} -filter_complex {filter_complex} -map [out] {str(output)}"
-        logger.debug(f"Command: {command}")
+        # command = f"ffmpeg -y -i {str(wav_path)} -filter_complex {filter_complex} -map [out] {str(output)}"
+        command = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(wav_path),
+            "-filter_complex",
+            filter_complex,
+            "-map",
+            "[out]",
+            str(output),
+        ]
+        logger.debug(f"Command: \n{' '.join(command)}\n\n")
 
-        procces = subprocess.run(command, shell=True, capture_output=True, text=True)
+        # procces = subprocess.run(command, shell=True, capture_output=True, text=True)
+        procces = subprocess.run(command, capture_output=True, text=True)
 
         if procces.returncode != 0:
             detail = procces.stderr

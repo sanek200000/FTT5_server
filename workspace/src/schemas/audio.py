@@ -32,6 +32,9 @@ class SilenceRegionDTO(BaseModel):
     def duration(self) -> float:
         return self.end - self.start
 
+    def format_log(self):
+        return f"start: {self.start:.3f}\tend: {self.end:.3f}"
+
 
 class ListRegionsDTO(BaseModel):
     regions: list[SilenceRegionDTO] = list()
@@ -103,6 +106,9 @@ class PauseEditDTO(BaseModel):
     original: SilenceRegionDTO
     target_duration: float
 
+    def format_log(self):
+        return f"{self.original.format_log()}\target_duration: {self.target_duration:.3f}"
+
 
 class PauseEditPlanDTO(BaseModel):
     scale: float = 1.0
@@ -111,3 +117,18 @@ class PauseEditPlanDTO(BaseModel):
     @property
     def length(self) -> int:
         return len(self.edits)
+
+    def format_log(self):
+        edits_log = "\n".join(edit.format_log() for edit in self.edits)
+        return (
+            "\n"
+            "========================================================\n"
+            "Pause edit plan\n"
+            "--------------------------------------------------------\n"
+            f"scale     : {self.scale:.3f}\n"
+            f"edits:\n"
+            f"{edits_log}"
+            "\n"
+            "========================================================"
+            "\n"
+        )

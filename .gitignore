@@ -5,6 +5,7 @@ __pycache__/
 
 # my extensions
 **/temp/
+*.wav
 # workspace/models/*
 
 # C extensions
