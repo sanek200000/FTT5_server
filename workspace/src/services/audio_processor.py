@@ -114,7 +114,7 @@ class AudioProcessor:
         cursor = 0.0
 
         for region in regions.regions:
-            if region.start > cursor:
+            if region.start >= cursor:
                 segments.append((cursor, region.start))
 
             cursor = region.end
@@ -122,7 +122,7 @@ class AudioProcessor:
         if cursor < duration:
             segments.append((cursor, duration))
 
-        detail = "\n".join(str(segment) for segment in segments)
+        detail = "\n".join(f"{i:02d}. {segment}" for i, segment in enumerate(segments, start=1))
         logger.debug(f"Segments: \n{detail}")
         return segments
 
@@ -151,27 +151,50 @@ class AudioProcessor:
         return ";\n".join(filters + [concat])
 
     @staticmethod
-    def rewrite_pauses(wav_path: Path, plan: PauseEditPlanDTO) -> Path:
-        regions = AudioProcessor.analyze(wav_path)
-        logger.info(f"Generated ({str(wav_path)}) pauses:" + regions.format_log())
+    def speed_equalizer(reference_duration: float, generated_duration: float, generated_wav: Path):
+        atempo = generated_duration / reference_duration
+        output_wav = generated_wav.with_stem(f"{generated_wav.stem}_speed")
+        logger.debug(f"{atempo = }")
 
-        info = sf.info(wav_path)
+        command = f'ffmpeg -i {generated_wav} -af "atempo={atempo}" {output_wav}'
+        logger.info(f"Command: '{command}'")
 
-        segments = AudioProcessor.build_segments(regions, duration=info.duration)
+        procces = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+
+        if procces.returncode != 0:
+            detail = procces.stderr
+            logger.error(detail)
+            raise RuntimeError(detail)
+
+        return output_wav
+
+    @staticmethod
+    def rewrite_pauses(reference_wav: Path, generated_wav: Path, plan: PauseEditPlanDTO) -> Path:
+        regions = AudioProcessor.analyze(generated_wav)
+        logger.info(f"Generated ({str(generated_wav)}) pauses:" + regions.format_log())
+
+        reference_info = sf.info(reference_wav)
+        generated_info = sf.info(generated_wav)
+
+        segments = AudioProcessor.build_segments(regions, duration=generated_info.duration)
         filter_complex = AudioProcessor._build_filter_complex(segments, plan)
-        output = wav_path.with_stem(f"{wav_path.stem}_pauses")
+        output_wav = generated_wav.with_stem(f"{generated_wav.stem}_pauses")
 
-        # command = f"ffmpeg -y -i {str(wav_path)} -filter_complex {filter_complex} -map [out] {str(output)}"
         command = [
             "ffmpeg",
             "-y",
             "-i",
-            str(wav_path),
+            str(generated_wav),
             "-filter_complex",
             filter_complex,
             "-map",
             "[out]",
-            str(output),
+            str(output_wav),
         ]
         logger.debug(f"Command: \n{' '.join(command)}\n\n")
 
@@ -183,7 +206,14 @@ class AudioProcessor:
             logger.error(detail)
             raise RuntimeError(detail)
 
-        return output
+        output_info = sf.info(output_wav)
+        logger.info(f"en_duration: {reference_info.duration}\tru_duration: {output_info.duration}")
+
+        return AudioProcessor.speed_equalizer(
+            reference_duration=reference_info.duration,
+            generated_duration=output_info.duration,
+            generated_wav=output_wav,
+        )
 
     @staticmethod
     def duration(wav_path: Path) -> float:
@@ -205,7 +235,8 @@ class AudioProcessor:
         logger.info(f"Pause scale={plan.scale if hasattr(plan, 'scale') else 'unknown'}")
 
         return AudioProcessor.rewrite_pauses(
-            wav_path=generated_wav,
+            reference_wav=reference_wav,
+            generated_wav=generated_wav,
             plan=plan,
         )
 

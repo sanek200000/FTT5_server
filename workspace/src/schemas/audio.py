@@ -80,8 +80,10 @@ class ListRegionsDTO(BaseModel):
         result = list()
         stats = self.statistics
 
-        for region in self.regions:
-            result.append(f"Silence: " f"{region.start:.3f}s -> " f"{region.end:.3f}s " f"({region.duration:.3f}s)\n")
+        for i, region in enumerate(self.regions, start=1):
+            result.append(
+                f"{i:02d}. Silence: " f"{region.start:.3f}s -> " f"{region.end:.3f}s " f"({region.duration:.3f}s)\n"
+            )
         return (
             "\n"
             "========================================================\n"
@@ -119,7 +121,7 @@ class PauseEditPlanDTO(BaseModel):
         return len(self.edits)
 
     def format_log(self):
-        edits_log = "\n".join(edit.format_log() for edit in self.edits)
+        edits_log = "\n".join(f"{i:02d}. {edit.format_log()}" for i, edit in enumerate(self.edits, start=1))
         return (
             "\n"
             "========================================================\n"
