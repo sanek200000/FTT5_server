@@ -157,7 +157,7 @@ class AudioProcessor:
         logger.debug(f"{atempo = }")
 
         command = f'ffmpeg -i {generated_wav} -af "atempo={atempo}" {output_wav}'
-        logger.info(f"Command: '{command}'")
+        logger.debug(f"Command: \n'{command}'")
 
         procces = subprocess.run(
             command,
@@ -165,6 +165,8 @@ class AudioProcessor:
             capture_output=True,
             text=True,
         )
+
+        generated_wav.unlink(missing_ok=True)
 
         if procces.returncode != 0:
             detail = procces.stderr

@@ -115,10 +115,6 @@ class TTSModel:
         except Exception as ex:
             raise SynthesisException(str(ex))
 
-        # if request.remove_silence:
-        # AudioProcessor.analyze(wav)
-        # wav = AudioProcessor.trim_silence(wav, sr)
-
         generation_time = time.perf_counter() - started
         # result_duration = len(wav) / sr
 
@@ -126,13 +122,14 @@ class TTSModel:
         sf.write(out_path, wav, sr)
 
         stretch_ratio = 1.0
-        if request.match_duration:
-            adjusted_path = AudioProcessor.adjust_pauses(
-                reference_wav=ref_path,
-                generated_wav=out_path,
-            )
-            out_path.unlink(missing_ok=True)
-            out_path = adjusted_path
+
+        # if request.match_duration:
+        #     adjusted_path = AudioProcessor.adjust_pauses(
+        #         reference_wav=ref_path,
+        #         generated_wav=out_path,
+        #     )
+        #     out_path.unlink(missing_ok=True)
+        #     out_path = adjusted_path
 
         result_duration = AudioProcessor.duration(out_path)
 
@@ -300,6 +297,16 @@ class TTSModel:
 
             if score >= request.min_similarity:
                 logger.info(f"Similarity threshold reached " f"({score:.2f}% >= {request.min_similarity:.2f}%)")
+
+                # --------------------------------------------
+                if request.match_duration:
+                    adjusted_path = AudioProcessor.adjust_pauses(
+                        reference_wav=result.ref_path,
+                        generated_wav=result.wav_path,
+                    )
+                    result.wav_path.unlink(missing_ok=True)
+                    result.wav_path = adjusted_path
+                # --------------------------------------------
 
                 result.attempt_history = attempt_history
                 logger.info(result.format_log(current_request))
