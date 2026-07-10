@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     # )
     # logger.info(f"Default model loaded: {default_model.name}")
 
-    app.state.tts = TTSManager()
+    app.state.tts_manager = TTSManager()
 
     logger.info("TTS manager initialized.")
 
@@ -34,4 +34,4 @@ async def lifespan(app: FastAPI):
 
     logger.info("Stopping server...")
 
-    app.state.tts.unload()
+    app.state.tts_manager.unload()

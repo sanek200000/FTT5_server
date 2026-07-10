@@ -17,3 +17,7 @@ class SafetensorsDTO(RootModel[dict[int, SafetensorDTO]]):
 class CurrentModelResponseDTO(BaseModel):
     loaded: bool
     model: Optional[SafetensorDTO] = None
+
+
+class LoadModelRequestDTO(BaseModel):
+    id: int

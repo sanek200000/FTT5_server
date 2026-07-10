@@ -1,15 +1,23 @@
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import FileResponse
 from loguru import logger
 
 from src.config import SS
-from src.schemas.tts_manager import CurrentModelResponseDTO
 from src.schemas.job import JobCreateResponseDTO, JobStatus, JobStatusResponseDTO
-from src.services.job_executor import start_job
 from src.schemas.tts import TTSRequestDTO
+from src.schemas.tts_manager import CurrentModelResponseDTO, LoadModelRequestDTO
 from src.services.job import job_manager
+from src.services.job_executor import start_job
 
 # from src.services.lifespan import TTS as tts
 
@@ -21,12 +29,9 @@ def get_models():
     return SS.MODELS_LIST.model_dump()
 
 
-@router.get(
-    "/model/current",
-    response_model=CurrentModelResponseDTO,
-)
+@router.get("/model/current", response_model=CurrentModelResponseDTO)
 def get_current_model(request: Request):
-    manager = request.app.state.tts
+    manager = request.app.state.tts_manager
 
     model = manager.current_model
 
@@ -38,21 +43,28 @@ def get_current_model(request: Request):
 
 @router.post("/model/load")
 def load_model(
-    tts_request: Request,
-    id: int,
+    request: Request,
+    dto: LoadModelRequestDTO = Form(1),
 ):
-    ckpt_path = SS.MODELS_LIST.root[id].ckpt_path
-    vocab_path = SS.MODELS_LIST.root[id].vocab_path
+    manager = request.app.state.tts_manager
+    model = SS.MODELS_LIST.root.get(dto.id)
 
-    try:
-        tts_manager = tts_request.app.state.tts
-        tts = tts_manager.get_model()
-    except Exception:
-        detail = "Model not found"
+    if model is None:
+        detail = f"Model with id={dto.id} not found"
         logger.error(detail)
-        raise RuntimeError(detail)
+        raise HTTPException(status_code=404, detail=detail)
 
-    tts.load(ckpt_path, vocab_path)
+    current = manager.current_model
+
+    if current and current.ckpt_path == model.ckpt_path:
+        return CurrentModelResponseDTO(loaded=True, model=current)
+
+    if manager.is_loaded:
+        manager.reload(model)
+    else:
+        manager.load(model)
+
+    return CurrentModelResponseDTO(loaded=True, model=manager.current_model)
 
 
 @router.get("/job/{job_id}", response_model=JobStatusResponseDTO)
@@ -129,7 +141,7 @@ async def tts_endpoint(
     seed: Optional[int] = Form(None),
 ):
     try:
-        tts_manager = tts_request.app.state.tts
+        tts_manager = tts_request.app.state.tts_manager
         tts = tts_manager.get_model()
     except Exception:
         detail = "Model not found"
