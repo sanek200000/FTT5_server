@@ -20,6 +20,38 @@ def get_models():
     return SS.MODELS_LIST.model_dump()
 
 
+@router.get("/model")
+def get_model(tts_request: Request):
+    try:
+        tts_manager = tts_request.app.state.tts
+        tts = tts_manager.get_model()
+    except Exception:
+        detail = "Model not found"
+        logger.error(detail)
+        raise RuntimeError(detail)
+
+    return tts.get_model
+
+
+@router.post("/model/load")
+def load_model(
+    tts_request: Request,
+    id: int,
+):
+    ckpt_path = SS.MODELS_LIST.root[id].ckpt_path
+    vocab_path = SS.MODELS_LIST.root[id].vocab_path
+
+    try:
+        tts_manager = tts_request.app.state.tts
+        tts = tts_manager.get_model()
+    except Exception:
+        detail = "Model not found"
+        logger.error(detail)
+        raise RuntimeError(detail)
+
+    tts.load(ckpt_path, vocab_path)
+
+
 @router.get("/job/{job_id}", response_model=JobStatusResponseDTO)
 def get_job_status(job_id: str):
     status = job_manager.get_status(job_id)
@@ -93,12 +125,17 @@ async def tts_endpoint(
     match_duration=Form(False),
     seed: Optional[int] = Form(None),
 ):
-    tts_manager = tts_request.app.state.tts
-    tts = tts_manager.get_model()
+    try:
+        tts_manager = tts_request.app.state.tts
+        tts = tts_manager.get_model()
+    except Exception:
+        detail = "Model not found"
+        logger.error(detail)
+        raise RuntimeError(detail)
 
-    if not tts:
-        logger.error(RuntimeError("Model is not loaded"))
-        raise RuntimeError("Model is not loaded")
+    # if not tts:
+    #     logger.error(RuntimeError("Model is not loaded"))
+    #     raise RuntimeError("Model is not loaded")
 
     request = TTSRequestDTO(
         ref_text=ref_text,

@@ -4,6 +4,7 @@ import gc
 
 from loguru import logger
 
+from schemas.tts_manager import SafetensorDTO
 from src.config import VOCAB_MISHA
 from src.services.tts import TTSModel
 
@@ -12,10 +13,11 @@ class TTSManager:
     def __init__(self) -> None:
         self._tts: Optional[TTSModel] = None
         self._weights_path: Optional[Path] = None
+        self._model_info: Optional[SafetensorDTO] = None
 
     @property
-    def current_weights(self) -> Path | None:
-        return self._weights_path
+    def current_model(self) -> Path | None:
+        return self._model_info
 
     @property
     def is_loaded(self) -> bool:
@@ -29,19 +31,19 @@ class TTSManager:
 
         return self._tts
 
-    def load(self, weights_path: Path, vocab_path: Path = VOCAB_MISHA):
+    def load(self, model: SafetensorDTO):
         if self._tts is not None:
             detail = "Model is already loaded"
             logger.error(detail)
             raise RuntimeError(detail)
 
-        logger.info(f"Loading model: {weights_path.name}")
+        logger.info(f"Loading model: {model.name}")
 
         self._tts = TTSModel(
-            ckpt_file=weights_path,
-            vocab_file=vocab_path,
+            ckpt_file=model.ckpt_path,
+            vocab_file=model.vocab_path,
         )
-        self._weights_path = weights_path
+        self._model_info = model
 
         logger.info("Model loaded.")
 
@@ -54,7 +56,7 @@ class TTSManager:
         del self._tts
 
         self._tts = None
-        self._weights_path = None
+        self._model_info = None
 
         gc.collect()
 
@@ -68,6 +70,6 @@ class TTSManager:
 
         logger.info("Model unload.")
 
-    def reload(self, weights_path: Path, vocab_path: Path = VOCAB_MISHA):
+    def reload(self, model: SafetensorDTO):
         self.unload()
-        self.load(weights_path, vocab_path)
+        self.load(model)

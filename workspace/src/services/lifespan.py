@@ -11,26 +11,27 @@ from src.services.tts_manager import TTSManager
 async def lifespan(app: FastAPI):
     logger.info("Initializing TTS manager...")
 
-    manager = TTSManager()
+    # manager = TTSManager()
 
-    default_model = next(iter(SS.MODELS_LIST.root.values()), None)
+    # default_model = next(iter(SS.MODELS_LIST.root.values()), None)
+    #
+    # if default_model is None:
+    #     detail = "No TTS models found"
+    #     logger.error(detail)
+    #     raise RuntimeError(detail)
 
-    if default_model is None:
-        detail = "No TTS models found"
-        logger.error(detail)
-        raise RuntimeError(detail)
+    # manager.load(
+    #     weights_path=default_model.ckpt_path,
+    #     vocab_path=default_model.vocab_path,
+    # )
+    # logger.info(f"Default model loaded: {default_model.name}")
 
-    manager.load(
-        weights_path=default_model.ckpt_path,
-        vocab_path=default_model.vocab_path,
-    )
+    app.state.tts = TTSManager()
 
-    app.state.tts = manager
-
-    logger.info(f"Default model loaded: {default_model.name}")
+    logger.info("TTS manager initialized.")
 
     yield
 
     logger.info("Stopping server...")
 
-    manager.unload()
+    app.state.tts.unload()
