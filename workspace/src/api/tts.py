@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Reque
 from fastapi.responses import FileResponse
 from loguru import logger
 
+from src.config import SS
 from src.schemas.job import JobCreateResponseDTO, JobStatus, JobStatusResponseDTO
 from src.services.job_executor import start_job
 from src.schemas.tts import TTSRequestDTO
@@ -12,6 +13,11 @@ from src.services.job import job_manager
 # from src.services.lifespan import TTS as tts
 
 router = APIRouter(prefix="/f5tts", tags=["F5TTS_model"])
+
+
+@router.get("/models")
+def get_models():
+    return SS.MODELS_LIST.model_dump()
 
 
 @router.get("/job/{job_id}", response_model=JobStatusResponseDTO)
@@ -87,7 +93,8 @@ async def tts_endpoint(
     match_duration=Form(False),
     seed: Optional[int] = Form(None),
 ):
-    tts = tts_request.app.state.tts
+    tts_manager = tts_request.app.state.tts
+    tts = tts_manager.get_model()
 
     if not tts:
         logger.error(RuntimeError("Model is not loaded"))

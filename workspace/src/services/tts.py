@@ -1,3 +1,4 @@
+from pathlib import Path
 import time
 import soundfile as sf
 from loguru import logger
@@ -5,7 +6,7 @@ from typing import Optional
 
 from f5_tts.api import F5TTS
 
-from services.text_preprocessor import TextPreprocessor
+from src.services.text_preprocessor import TextPreprocessor
 from src.services.generation_plan import GenerationPlanBuilder
 from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
@@ -30,27 +31,34 @@ class TTSModel:
         tts (F5TTS): Инициализированная модель TTS.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, ckpt_file: Path, vocab_file: Path) -> None:
         """
         Загружает модель F5-TTS в память.
 
         Notes:
             Загружает веса из путей SAFETENSORS_MISHA и VOCAB_MISHA.
         """
-        if not SAFETENSORS_MISHA.exists():
-            logger.warning(f"File {str(SAFETENSORS_MISHA)} is not exists")
-            download_model(SAFETENSORS_MISHA)
-        if not VOCAB_MISHA.exists():
-            logger.warning(f"File {str(VOCAB_MISHA)} is not exists")
-            download_model(VOCAB_MISHA)
+        if not ckpt_file.exists():
+            logger.warning(f"File {str(ckpt_file)} is not exists")
+            download_model(ckpt_file)
+        if not vocab_file.exists():
+            logger.warning(f"File {str(vocab_file)} is not exists")
+            download_model(vocab_file)
 
         logger.info("Loading F5-TTS...")
         try:
-            self.tts = F5TTS(ckpt_file=str(SAFETENSORS_MISHA), vocab_file=str(VOCAB_MISHA), device=DEVICE)
+            self.tts = F5TTS(
+                ckpt_file=str(ckpt_file),
+                vocab_file=str(vocab_file),
+                device=DEVICE,
+            )
         except Exception as ex:
             logger.error(f"{type(ex)}: {ex}")
             raise
-        logger.info("F5-TTS loaded.")
+        logger.info(f"F5-TTS loaded. Current weights: {ckpt_file.name}")
+
+        self.ckpt_file = ckpt_file
+        self.vocab_file = vocab_file
 
         self._whisper = WhisperService()
         self._similarity = TextSimilarityService()
@@ -123,14 +131,6 @@ class TTSModel:
 
         stretch_ratio = 1.0
 
-        # if request.match_duration:
-        #     adjusted_path = AudioProcessor.adjust_pauses(
-        #         reference_wav=ref_path,
-        #         generated_wav=out_path,
-        #     )
-        #     out_path.unlink(missing_ok=True)
-        #     out_path = adjusted_path
-
         result_duration = AudioProcessor.duration(out_path)
 
         return SynthesisResultDTO(
@@ -141,21 +141,6 @@ class TTSModel:
             result_duration=result_duration,
             stretch_ratio=stretch_ratio,
         )
-
-    # def _prepare_attempt_request(
-    #     self,
-    #     request: TTSRequestDTO,
-    #     attempt: int,
-    # ) -> TTSRequestDTO:
-    #     current_request = request.model_copy(deep=True)
-    #
-    #     if attempt > 1:
-    #         current_request.seed = randint(0, 2**32 - 1)
-    #
-    #     if attempt > 3:
-    #         current_request.speed = max(0.5, request.speed - 0.1 * (attempt - 3))
-    #
-    #     return current_request
 
     def _register_attempt(
         self,

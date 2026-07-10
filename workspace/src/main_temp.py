@@ -7,10 +7,11 @@ from src.utils.generate_tree import save_structure
 from src.services.audio_processor import AudioProcessor
 
 if __name__ == "__main__":
-    # save_structure()
+    save_structure()
 
     # AudioProcessor.analyze(wav_path=Path("/workspace/ru.wav"))
-    AudioProcessor.adjust_pauses(
-        reference_wav=Path("/workspace/en.wav"),
-        generated_wav=Path("/workspace/ru.wav"),
-    )
+
+    # AudioProcessor.adjust_pauses(
+    #     reference_wav=Path("/workspace/en.wav"),
+    #     generated_wav=Path("/workspace/ru.wav"),
+    # )
