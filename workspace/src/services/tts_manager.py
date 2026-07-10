@@ -4,9 +4,10 @@ import gc
 
 from loguru import logger
 
-from schemas.tts_manager import SafetensorDTO
-from src.config import VOCAB_MISHA
+from exceptions import ModelBusyException
+from src.schemas.tts_manager import SafetensorDTO
 from src.services.tts import TTSModel
+from src.services.job import job_manager
 
 
 class TTSManager:
@@ -71,5 +72,10 @@ class TTSManager:
         logger.info("Model unload.")
 
     def reload(self, model: SafetensorDTO):
+        if job_manager.has_progressing_jobs():
+            detail = "Cannot reload model while synthesis is in progress."
+            logger.error(detail)
+            raise ModelBusyException(detail)
+
         self.unload()
         self.load(model)

@@ -10,6 +10,9 @@ class JobManager:
     def __init__(self) -> None:
         self._jobs: dict[str, JobInternalDTO] = dict()
 
+    def has_progressing_jobs(self) -> bool:
+        return any(job.status == JobStatus.PROGRESSING for job in self._jobs.values())
+
     def get_status(self, job_id: str) -> JobStatusResponseDTO | None:
         job = self._jobs.get(job_id)
 

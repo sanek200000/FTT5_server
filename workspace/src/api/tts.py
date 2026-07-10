@@ -26,7 +26,7 @@ router = APIRouter(prefix="/f5tts", tags=["F5TTS_model"])
 
 @router.get("/models")
 def get_models():
-    return SS.MODELS_LIST.model_dump()
+    return SS.MODELS_LIST
 
 
 @router.get("/model/current", response_model=CurrentModelResponseDTO)
@@ -41,16 +41,17 @@ def get_current_model(request: Request):
     return CurrentModelResponseDTO(loaded=False)
 
 
-@router.post("/model/load")
+@router.post("/model/load/{model_id}")
 def load_model(
     request: Request,
-    dto: LoadModelRequestDTO = Form(1),
+    model_id: int,
+    # dto: LoadModelRequestDTO = Form(1),
 ):
     manager = request.app.state.tts_manager
-    model = SS.MODELS_LIST.root.get(dto.id)
+    model = SS.MODELS_LIST.root.get(model_id)
 
     if model is None:
-        detail = f"Model with id={dto.id} not found"
+        detail = f"Model with id={model_id} not found"
         logger.error(detail)
         raise HTTPException(status_code=404, detail=detail)
 

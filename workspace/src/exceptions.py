@@ -8,3 +8,7 @@ class InvalidAudioException(TTSException):
 
 class SynthesisException(TTSException):
     pass
+
+
+class ModelBusyException(RuntimeError):
+    pass
