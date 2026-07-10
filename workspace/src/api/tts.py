@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from loguru import logger
 
 from src.config import SS
+from src.schemas.tts_manager import CurrentModelResponseDTO
 from src.schemas.job import JobCreateResponseDTO, JobStatus, JobStatusResponseDTO
 from src.services.job_executor import start_job
 from src.schemas.tts import TTSRequestDTO
@@ -20,17 +21,19 @@ def get_models():
     return SS.MODELS_LIST.model_dump()
 
 
-@router.get("/model")
-def get_model(tts_request: Request):
-    try:
-        tts_manager = tts_request.app.state.tts
-        tts = tts_manager.get_model()
-    except Exception:
-        detail = "Model not found"
-        logger.error(detail)
-        raise RuntimeError(detail)
+@router.get(
+    "/model/current",
+    response_model=CurrentModelResponseDTO,
+)
+def get_current_model(request: Request):
+    manager = request.app.state.tts
 
-    return tts.get_model
+    model = manager.current_model
+
+    if model:
+        return CurrentModelResponseDTO(loaded=True, model=model)
+
+    return CurrentModelResponseDTO(loaded=False)
 
 
 @router.post("/model/load")

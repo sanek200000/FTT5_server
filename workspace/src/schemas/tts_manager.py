@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 from pydantic import BaseModel, RootModel
 
@@ -11,3 +12,8 @@ class SafetensorDTO(BaseModel):
 
 class SafetensorsDTO(RootModel[dict[int, SafetensorDTO]]):
     pass
+
+
+class CurrentModelResponseDTO(BaseModel):
+    loaded: bool
+    model: Optional[SafetensorDTO] = None
