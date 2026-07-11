@@ -81,13 +81,14 @@ RUN curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linu
 
 RUN npm install -g tree-sitter-cli
 
+# Рабочая директория
+WORKDIR /workspace
+
 # Отключаем создание venv и настраиваем генерацию прямо в систему
 # ENV POETRY_VIRTUALENVS_CREATE=false
 # Установка зависимостей без создания окружения
-RUN poetry install --no-interaction --no-ansi
-
-# Рабочая директория
-WORKDIR /workspace
+# COPY workspace/pyproject.toml workspace/poetry.lock ./
+# RUN poetry install --no-interaction --no-ansi
 
 # Переключение на пользователя
 # RUN mkdir /db && chown dev:dev /db
