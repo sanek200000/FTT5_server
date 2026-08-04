@@ -1,4 +1,5 @@
 from threading import Thread
+import time
 
 from loguru import logger
 
@@ -14,12 +15,19 @@ def _run_job(
     request: TTSRequestDTO,
     ref_audio_bytes: bytes,
 ):
-    pass
+    job_start = time.perf_counter()
+    logger.info(f"[{job_id}] job started")
+
     try:
+        tts_start = time.perf_counter()
+        logger.info(f"[{job_id}] synthesize() started")
         result = tts.synthesize(
             request=request,
             ref_audio_bytes=ref_audio_bytes,
             job_id=job_id,
+        )
+        logger.info(
+            f"[{job_id}] synthesize() finished in {time.perf_counter() - tts_start} sec"
         )
 
         logger.debug(
@@ -30,6 +38,7 @@ def _run_job(
             f" stretch={result.stretch_ratio:.3f}"
         )
 
+        logger.info(f"[{job_id}] TOTAL {time.perf_counter() - job_start} sec")
         job_manager.update(
             job_id,
             status=JobStatus.COMPLETED,
@@ -38,11 +47,12 @@ def _run_job(
             # ref_path=result.ref_path,
         )
     except Exception as ex:
-        logger.exception(ex)
+        detail = f"{type(ex)}, {ex}"
+        logger.exception(detail)
         job_manager.update(
             job_id,
             status=JobStatus.FAILED,
-            error=str(ex),
+            error=detail,
         )
 
 
@@ -52,6 +62,7 @@ def start_job(
     request: TTSRequestDTO,
     ref_audio_bytes: bytes,
 ):
+    logger.info(f"[{job_id}] Creating worker thread")
     thread = Thread(
         target=_run_job,
         args=(job_id, tts, request, ref_audio_bytes),
@@ -59,3 +70,4 @@ def start_job(
     )
 
     thread.start()
+    logger.info(f"[{job_id}] Worcer thread started")

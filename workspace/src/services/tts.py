@@ -82,11 +82,16 @@ class TTSModel:
         request: TTSRequestDTO,
         result: SynthesisResultDTO,
     ) -> float:
+        t = time.perf_counter()
         recognized = self._whisper.transcribe(result.wav_path)
+        logger.info(f"[{self._job_id}] whisper {time.perf_counter() - t} sec")
+
+        t = time.perf_counter()
         similarity = self._similarity.similarity(
             expected=request.gen_text,
             recognized=recognized,
         )
+        logger.info(f"[{self._job_id}] similarity {time.perf_counter() - t} sec")
 
         result.similarity = similarity.score
 
@@ -110,8 +115,14 @@ class TTSModel:
         ref_duration = ref_info.duration
 
         try:
+            t = time.perf_counter()
             prepared_text = TextPreprocessor.prepare_generation_text(request.gen_text)
+            logger.info(
+                f"[{self._job_id}] prepare_generation_text {time.perf_counter() - t} sec"
+            )
 
+            t = time.perf_counter()
+            logger.info("F5 infer started")
             wav, sr, _ = self.tts.infer(
                 ref_file=str(ref_path),
                 ref_text=request.ref_text,
@@ -120,14 +131,21 @@ class TTSModel:
                 remove_silence=request.remove_silence,
                 seed=request.seed,
             )
+            logger.info(
+                f"[{self._job_id}] F5 infer finished {time.perf_counter() - t} sec"
+            )
         except Exception as ex:
+            logger.exception(f"{type(ex)} {ex}")
             raise SynthesisException(str(ex))
 
         generation_time = time.perf_counter() - started
         # result_duration = len(wav) / sr
 
         out_path = TempFiles.create_output()
+
+        t = time.perf_counter()
         sf.write(out_path, wav, sr)
+        logger.info(f"[{self._job_id}] wav saved in {time.perf_counter() - t} sec")
 
         stretch_ratio = 1.0
 
@@ -164,7 +182,7 @@ class TTSModel:
             )
         )
 
-        logger.info(f"Attempt {attempt}/{request.max_attempts}: " f"{score:.2f}%")
+        logger.info(f"Attempt {attempt}/{request.max_attempts}: {score:.2f}%")
 
     def _select_best_result(
         self,
@@ -249,6 +267,8 @@ class TTSModel:
         request.max_attempts = plan.max_attempts
 
         for attempt, params in enumerate(plan.attempts, start=1):
+            attempt_start = time.perf_counter()
+
             # current_request = self._prepare_attempt_request(request, attempt)
             current_request = request.model_copy(deep=True)
             current_request.seed = params.seed
@@ -269,7 +289,9 @@ class TTSModel:
                     max_attempts=plan.max_attempts,
                 )
 
-            self._register_attempt(attempt_history, attempt, current_request, result, score)
+            self._register_attempt(
+                attempt_history, attempt, current_request, result, score
+            )
 
             best_result, best_request, best_score = self._select_best_result(
                 result,
@@ -280,8 +302,14 @@ class TTSModel:
                 best_score,
             )
 
+            logger.info(
+                f"[{job_id}] attempt {attempt} {time.perf_counter() - attempt_start} sec"
+            )
             if score >= request.min_similarity:
-                logger.info(f"Similarity threshold reached " f"({score:.2f}% >= {request.min_similarity:.2f}%)")
+                logger.info(
+                    f"Similarity threshold reached "
+                    f"({score:.2f}% >= {request.min_similarity:.2f}%)"
+                )
 
                 # --------------------------------------------
                 if request.match_duration:
@@ -334,12 +362,23 @@ class TTSModel:
         ref_audio_bytes: bytes,
         job_id: Optional[str] = None,
     ) -> SynthesisResultDTO:
+        self._job_id = job_id
+
+        total_start = time.perf_counter()
+        logger.info(f"[{job_id}] synthesize entered")
 
         if not request.verify_with_whisper:
-            return self._synthesize_without_verification(request=request, ref_audio_bytes=ref_audio_bytes)
+            return self._synthesize_without_verification(
+                request=request, ref_audio_bytes=ref_audio_bytes
+            )
 
-        return self._synthesize_with_verification(
+        result = self._synthesize_with_verification(
             request=request,
             ref_audio_bytes=ref_audio_bytes,
             job_id=job_id,
         )
+
+        logger.info(
+            f"[{job_id}] TOTAL synthesize {time.perf_counter() - total_start} sec"
+        )
+        return result

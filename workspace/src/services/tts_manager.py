@@ -30,6 +30,7 @@ class TTSManager:
             logger.error(detail)
             raise RuntimeError(detail)
 
+        logger.debug(f"Ruturning TTSModel id={id(self._tts)}")
         return self._tts
 
     def load(self, model: SafetensorDTO):

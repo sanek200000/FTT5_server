@@ -12,6 +12,7 @@ x-base-settings: &base-settings
     - ./workspace:/workspace
     - ./.docker/nvim:/home/${USERNAME}/.config/nvim
     - f5tts-home:/home/${USERNAME}
+    - /mnt/MyDownloads/000temp/localization_KCD2/workspace/models/:/workspace/models
   ports:
     - "8000:8000"
   env_file:
@@ -28,11 +29,6 @@ services:
     profiles: ["cpu"]
     container_name: f5tts_fastapi_dev_conteiner
     hostname: f5tts_fastapi_dev_conteiner
-    volumes:
-      - ./workspace:/workspace
-      - ./.docker/nvim:/home/${USERNAME}/.config/nvim
-      - f5tts-home:/home/${USERNAME}
-      - /mnt/MyDownloads/000temp/localization_KCD2/workspace/models/:/workspace/models
     # command: poetry run python src/main.py
     command: zsh
 
@@ -51,8 +47,8 @@ services:
             - driver: nvidia
               count: all # или укажите 1, 2 и т.д.
               capabilities: [gpu]
-    # command: poetry run python src/main.py
-    command: zsh
+    command: poetry run python src/main.py
+    # command: zsh
 
 # ============================================
 # Тома для сохранения данных

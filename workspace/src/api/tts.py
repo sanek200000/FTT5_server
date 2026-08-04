@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 from fastapi import (
@@ -163,7 +164,9 @@ async def tts_endpoint(
     )
     logger.info(request.format_log())
 
+    start = time.perf_counter()
     job_id = job_manager.create_job()
+    logger.info(f"[{job_id}] HTTP request received")
 
     start_job(
         job_id=job_id,
@@ -171,5 +174,6 @@ async def tts_endpoint(
         request=request,
         ref_audio_bytes=await ref_audio.read(),
     )
+    logger.info(f"[{job_id}] job submitted in {time.perf_counter() - start} sec")
 
     return JobCreateResponseDTO(id=job_id)
