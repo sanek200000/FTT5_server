@@ -3,35 +3,30 @@ from contextlib import asynccontextmanager
 
 from loguru import logger
 
-from src.config import SS
+from services.whisper import WhisperService
 from src.services.tts_manager import TTSManager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing TTS manager...")
+    logger.info("Initializing services...")
 
-    # manager = TTSManager()
+    whisper = WhisperService()
+    tts_manager = TTSManager(whisper=whisper)
 
-    # default_model = next(iter(SS.MODELS_LIST.root.values()), None)
-    #
-    # if default_model is None:
-    #     detail = "No TTS models found"
-    #     logger.error(detail)
-    #     raise RuntimeError(detail)
+    app.state.whisper = whisper
+    app.state.tts_manager = tts_manager
 
-    # manager.load(
-    #     weights_path=default_model.ckpt_path,
-    #     vocab_path=default_model.vocab_path,
-    # )
-    # logger.info(f"Default model loaded: {default_model.name}")
+    logger.info("Services initialized.")
 
-    app.state.tts_manager = TTSManager()
+    try:
+        yield
+    finally:
+        logger.info("Stopping server...")
 
-    logger.info("TTS manager initialized.")
+        tts_manager.unload()
 
-    yield
+        del app.state.tts_manager
+        del app.state.whisper
 
-    logger.info("Stopping server...")
-
-    app.state.tts_manager.unload()
+        logger.info("Server stopped.")

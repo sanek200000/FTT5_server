@@ -6,8 +6,6 @@ from src.schemas.whisper import TranscruptionResponseDTO
 
 router = APIRouter(prefix="/transcribe", tags=["Whisper_model"])
 
-# whisper = WhisperService()
-
 
 @router.get("/")
 def root():
@@ -26,5 +24,5 @@ async def transcribe(
         text = whisper.transcribe(wav_path)
         return TranscruptionResponseDTO(text=text)
     finally:
-        pass
-        # wav_path.unlink(missing_ok=True)
+        # pass
+        wav_path.unlink(missing_ok=True)

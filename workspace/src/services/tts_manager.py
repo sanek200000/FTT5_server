@@ -6,16 +6,18 @@ import gc
 from loguru import logger
 
 from exceptions import ModelBusyException
+from services.whisper import WhisperService
 from src.schemas.tts_manager import SafetensorDTO
 from src.services.tts import TTSModel
 from src.services.job import job_manager
 
 
 class TTSManager:
-    def __init__(self) -> None:
+    def __init__(self, whisper: WhisperService) -> None:
         self._tts: Optional[TTSModel] = None
         self._weights_path: Optional[Path] = None
         self._model_info: Optional[SafetensorDTO] = None
+        self._whisper = whisper
 
     @property
     def current_model(self) -> Path | None:
@@ -48,6 +50,7 @@ class TTSManager:
         self._tts = TTSModel(
             ckpt_file=model.ckpt_path,
             vocab_file=model.vocab_path,
+            whisper=self._whisper,
         )
         self._model_info = model
 

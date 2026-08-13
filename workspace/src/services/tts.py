@@ -33,7 +33,12 @@ class TTSModel:
         tts (F5TTS): Инициализированная модель TTS.
     """
 
-    def __init__(self, ckpt_file: Path, vocab_file: Path) -> None:
+    def __init__(
+        self,
+        ckpt_file: Path,
+        vocab_file: Path,
+        whisper: WhisperService,
+    ) -> None:
         """
         Загружает модель F5-TTS в память.
 
@@ -62,7 +67,7 @@ class TTSModel:
         self.ckpt_file = ckpt_file
         self.vocab_file = vocab_file
 
-        self._whisper = WhisperService()
+        self._whisper = whisper
         self._similarity = TextSimilarityService()
 
     def infer(self, ref_file, ref_text, gen_text):
