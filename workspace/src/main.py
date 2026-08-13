@@ -37,6 +37,6 @@ if __name__ == "__main__":
 
     logger.info("----------------------START NEW SESSION----------------------")
 
-    uvicorn.run("main:app", reload=True, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", reload=False, host="0.0.0.0", port=8000, workers=1)
 
     logger.info("----------------------END SESSION----------------------")

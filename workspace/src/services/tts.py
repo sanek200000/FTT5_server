@@ -1,10 +1,12 @@
 from pathlib import Path
+import threading
 import time
 import soundfile as sf
 from loguru import logger
 from typing import Optional
 
 from f5_tts.api import F5TTS
+import torch
 
 from src.services.text_preprocessor import TextPreprocessor
 from src.services.generation_plan import GenerationPlanBuilder
@@ -82,16 +84,20 @@ class TTSModel:
         request: TTSRequestDTO,
         result: SynthesisResultDTO,
     ) -> float:
-        t = time.perf_counter()
+        t = time.perf_counter()  # TODO: delete
         recognized = self._whisper.transcribe(result.wav_path)
-        logger.info(f"[{self._job_id}] whisper {time.perf_counter() - t} sec")
+        logger.info(
+            f"[{self._job_id}] whisper {time.perf_counter() - t} sec"
+        )  # TODO: delete
 
-        t = time.perf_counter()
+        t = time.perf_counter()  # TODO: delete
         similarity = self._similarity.similarity(
             expected=request.gen_text,
             recognized=recognized,
         )
-        logger.info(f"[{self._job_id}] similarity {time.perf_counter() - t} sec")
+        logger.info(
+            f"[{self._job_id}] similarity {time.perf_counter() - t} sec"
+        )  # TODO: delete
 
         result.similarity = similarity.score
 
@@ -119,10 +125,17 @@ class TTSModel:
             prepared_text = TextPreprocessor.prepare_generation_text(request.gen_text)
             logger.info(
                 f"[{self._job_id}] prepare_generation_text {time.perf_counter() - t} sec"
-            )
+            )  # TODO: delete
 
             t = time.perf_counter()
-            logger.info("F5 infer started")
+            logger.info("F5 infer started")  # TODO: delete
+            logger.info(
+                f"[{self._job_id}] infer ENTER | thread={threading.current_thread().name} | tts_id={id(self.tts)}"
+            )  # TODO: delete
+            logger.info(
+                f"[{self._job_id}] before infer: cuda_stream={torch.cuda.current_stream()}"
+            )  # TODO: delete
+
             wav, sr, _ = self.tts.infer(
                 ref_file=str(ref_path),
                 ref_text=request.ref_text,
@@ -131,21 +144,30 @@ class TTSModel:
                 remove_silence=request.remove_silence,
                 seed=request.seed,
             )
+
+            logger.info(
+                f"[{self._job_id}] after infer: cuda_stream={torch.cuda.current_stream()}"
+            )  # TODO: delete
+            logger.info(
+                f"[{self._job_id}] infer EXIT | thread={threading.current_thread().name} | tts_id={id(self.tts)}"
+            )  # TODO: delete
             logger.info(
                 f"[{self._job_id}] F5 infer finished {time.perf_counter() - t} sec"
-            )
+            )  # TODO: delete
         except Exception as ex:
             logger.exception(f"{type(ex)} {ex}")
             raise SynthesisException(str(ex))
 
-        generation_time = time.perf_counter() - started
+        generation_time = time.perf_counter() - started  # TODO: delete
         # result_duration = len(wav) / sr
 
         out_path = TempFiles.create_output()
 
-        t = time.perf_counter()
+        t = time.perf_counter()  # TODO: delete
         sf.write(out_path, wav, sr)
-        logger.info(f"[{self._job_id}] wav saved in {time.perf_counter() - t} sec")
+        logger.info(
+            f"[{self._job_id}] wav saved in {time.perf_counter() - t} sec"
+        )  # TODO: delete
 
         stretch_ratio = 1.0
 
@@ -304,7 +326,7 @@ class TTSModel:
 
             logger.info(
                 f"[{job_id}] attempt {attempt} {time.perf_counter() - attempt_start} sec"
-            )
+            )  # TODO: delete
             if score >= request.min_similarity:
                 logger.info(
                     f"Similarity threshold reached "
@@ -364,8 +386,8 @@ class TTSModel:
     ) -> SynthesisResultDTO:
         self._job_id = job_id
 
-        total_start = time.perf_counter()
-        logger.info(f"[{job_id}] synthesize entered")
+        total_start = time.perf_counter()  # TODO: delete
+        logger.info(f"[{job_id}] synthesize entered")  # TODO: delete
 
         if not request.verify_with_whisper:
             return self._synthesize_without_verification(
@@ -380,5 +402,5 @@ class TTSModel:
 
         logger.info(
             f"[{job_id}] TOTAL synthesize {time.perf_counter() - total_start} sec"
-        )
+        )  # TODO: delete
         return result

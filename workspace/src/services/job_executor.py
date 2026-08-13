@@ -1,4 +1,5 @@
 from threading import Thread
+import threading
 import time
 
 from loguru import logger
@@ -20,15 +21,18 @@ def _run_job(
 
     try:
         tts_start = time.perf_counter()
-        logger.info(f"[{job_id}] synthesize() started")
+        logger.info(
+            f"[{job_id}] ENTER synthesize thread={threading.current_thread().name}"
+        )  # TODO: delete
+
         result = tts.synthesize(
             request=request,
             ref_audio_bytes=ref_audio_bytes,
             job_id=job_id,
         )
         logger.info(
-            f"[{job_id}] synthesize() finished in {time.perf_counter() - tts_start} sec"
-        )
+            f"[{job_id}] EXIT synthesize thread={threading.current_thread().name} | {time.perf_counter() - tts_start} sec"
+        )  # TODO: delete
 
         logger.debug(
             f"TTS: "

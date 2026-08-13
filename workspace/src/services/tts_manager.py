@@ -1,3 +1,4 @@
+import threading
 from typing import Optional
 from pathlib import Path
 import gc
@@ -30,7 +31,10 @@ class TTSManager:
             logger.error(detail)
             raise RuntimeError(detail)
 
-        logger.debug(f"Ruturning TTSModel id={id(self._tts)}")
+        logger.debug(
+            f"Ruturning TTSModel thread={threading.current_thread().name} | model={id(self._tts)}"
+        )  # TODO: delete
+
         return self._tts
 
     def load(self, model: SafetensorDTO):
