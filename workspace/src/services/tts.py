@@ -162,6 +162,8 @@ class TTSModel:
         except Exception as ex:
             logger.exception(f"{type(ex)} {ex}")
             raise SynthesisException(str(ex))
+        finally:
+            ref_path.unlink(missing_ok=True)
 
         generation_time = time.perf_counter() - started  # TODO: delete
         # result_duration = len(wav) / sr
