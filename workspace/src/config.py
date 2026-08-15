@@ -53,7 +53,17 @@ logger.add(
     APP_PATH.joinpath("logs/tts_server.log"),
     rotation=should_rotate_on_start,
     retention=10,
+    filter=lambda record: record["extra"].get("name") != "special_log",
 )
+
+logger.add(
+    APP_PATH.joinpath("logs/memory_check.log"),
+    rotation=should_rotate_on_start,
+    retention=10,
+    filter=lambda record: record["extra"].get("name") == "special_log",
+)
+mem_log = logger.bind(name="special_log")
+
 
 if __name__ == "__main__":
     # [print(f"{key} = {value}") for key, value in globals().items() if not key.startswith("__")]

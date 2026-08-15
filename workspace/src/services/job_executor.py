@@ -16,23 +16,19 @@ def _run_job(
     request: TTSRequestDTO,
     ref_audio_bytes: bytes,
 ):
-    job_start = time.perf_counter()
-    logger.info(f"[{job_id}] job started")
+    # job_start = time.perf_counter()  # TODO: delete
+    # logger.info(f"[{job_id}] job started")  # TODO: delete
 
     try:
-        tts_start = time.perf_counter()
-        logger.info(
-            f"[{job_id}] ENTER synthesize thread={threading.current_thread().name}"
-        )  # TODO: delete
+        # tts_start = time.perf_counter()  # TODO: delete
+        # logger.info(f"[{job_id}] ENTER synthesize thread={threading.current_thread().name}")  # TODO: delete
 
         result = tts.synthesize(
             request=request,
             ref_audio_bytes=ref_audio_bytes,
             job_id=job_id,
         )
-        logger.info(
-            f"[{job_id}] EXIT synthesize thread={threading.current_thread().name} | {time.perf_counter() - tts_start} sec"
-        )  # TODO: delete
+        # logger.info(f"[{job_id}] EXIT synthesize thread={threading.current_thread().name} | {time.perf_counter() - tts_start} sec")  # TODO: delete
 
         logger.debug(
             f"TTS: "
@@ -42,7 +38,8 @@ def _run_job(
             f" stretch={result.stretch_ratio:.3f}"
         )
 
-        logger.info(f"[{job_id}] TOTAL {time.perf_counter() - job_start} sec")
+        # logger.info(f"[{job_id}] TOTAL {time.perf_counter() - job_start} sec")  # TODO: delete
+
         job_manager.update(
             job_id,
             status=JobStatus.COMPLETED,
@@ -66,7 +63,7 @@ def start_job(
     request: TTSRequestDTO,
     ref_audio_bytes: bytes,
 ):
-    logger.info(f"[{job_id}] Creating worker thread")
+    # logger.info(f"[{job_id}] Creating worker thread")  # TODO: delete
     thread = Thread(
         target=_run_job,
         args=(job_id, tts, request, ref_audio_bytes),
@@ -74,4 +71,4 @@ def start_job(
     )
 
     thread.start()
-    logger.info(f"[{job_id}] Worcer thread started")
+    # logger.info(f"[{job_id}] Worcer thread started")  # TODO: delete

@@ -9,6 +9,7 @@ from src.exceptions import ModelBusyException, SynthesisException
 from src.api.tts import router as router_f5tts
 from src.api.whisper import router as router_whisper
 
+
 app = FastAPI(lifespan=lifespan)
 # app = FastAPI()
 

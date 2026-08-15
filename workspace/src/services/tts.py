@@ -1,25 +1,24 @@
-from pathlib import Path
-import threading
+import gc
 import time
+from pathlib import Path
+
 import soundfile as sf
-from loguru import logger
-from typing import Optional
-
 from f5_tts.api import F5TTS
-import torch
+from loguru import logger
 
-from src.services.text_preprocessor import TextPreprocessor
+from src.config import DEVICE
+from src.exceptions import SynthesisException
+from src.schemas.job import JobStatus
+from src.schemas.tts import AttemptDTO, SynthesisResultDTO, TTSRequestDTO
+from src.services.audio_processor import AudioProcessor
 from src.services.generation_plan import GenerationPlanBuilder
+from src.services.job import job_manager
+from src.services.temp_files import TempFiles
+from src.services.text_preprocessor import TextPreprocessor
 from src.services.text_similarity import TextSimilarityService
 from src.services.whisper import WhisperService
-from src.services.audio_processor import AudioProcessor
-from src.exceptions import SynthesisException
-from src.schemas.tts import AttemptDTO, SynthesisResultDTO, TTSRequestDTO
-from src.schemas.job import JobStatus
-from src.services.temp_files import TempFiles
-from src.services.job import job_manager
-from src.config import DEVICE, SAFETENSORS_MISHA, VOCAB_MISHA
 from src.utils.downloader import download_model
+from src.utils.mem_test import MemoryCheck
 
 
 class TTSModel:
@@ -46,10 +45,10 @@ class TTSModel:
             Загружает веса из путей SAFETENSORS_MISHA и VOCAB_MISHA.
         """
         if not ckpt_file.exists():
-            logger.warning(f"File {str(ckpt_file)} is not exists")
+            logger.warning(f"File {ckpt_file!s} is not exists")
             download_model(ckpt_file)
         if not vocab_file.exists():
-            logger.warning(f"File {str(vocab_file)} is not exists")
+            logger.warning(f"File {vocab_file!s} is not exists")
             download_model(vocab_file)
 
         logger.info("Loading F5-TTS...")
@@ -70,6 +69,8 @@ class TTSModel:
         self._whisper = whisper
         self._similarity = TextSimilarityService()
 
+        self._mem_check = MemoryCheck()
+
     def infer(self, ref_file, ref_text, gen_text):
         """
         Выполняет прямой inference модели F5-TTS.
@@ -89,20 +90,24 @@ class TTSModel:
         request: TTSRequestDTO,
         result: SynthesisResultDTO,
     ) -> float:
-        t = time.perf_counter()  # TODO: delete
-        recognized = self._whisper.transcribe(result.wav_path)
-        logger.info(
-            f"[{self._job_id}] whisper {time.perf_counter() - t} sec"
-        )  # TODO: delete
+        # t = time.perf_counter()  # TODO: delete
+        self._mem_check.snapshot("BEFORE WHISPER")  # TODO: delete
 
-        t = time.perf_counter()  # TODO: delete
+        recognized = self._whisper.transcribe(result.wav_path)
+
+        self._mem_check.snapshot("AFTER WHISPER")  # TODO: delete
+        gc.collect()  # TODO: delete
+        self._mem_check.snapshot("AFTER WHISPER GC")  # TODO: delete
+        # logger.info(f"[{self._job_id}] whisper {time.perf_counter() - t} sec")  # TODO: delete
+        # t = time.perf_counter()  # TODO: delete
+
         similarity = self._similarity.similarity(
             expected=request.gen_text,
             recognized=recognized,
         )
-        logger.info(
-            f"[{self._job_id}] similarity {time.perf_counter() - t} sec"
-        )  # TODO: delete
+        self._mem_check.snapshot("AFTER SIMILARITY")  # TODO: delete
+
+        # logger.info(f"[{self._job_id}] similarity {time.perf_counter() - t} sec")  # TODO: delete
 
         result.similarity = similarity.score
 
@@ -126,20 +131,18 @@ class TTSModel:
         ref_duration = ref_info.duration
 
         try:
-            t = time.perf_counter()
-            prepared_text = TextPreprocessor.prepare_generation_text(request.gen_text)
-            logger.info(
-                f"[{self._job_id}] prepare_generation_text {time.perf_counter() - t} sec"
-            )  # TODO: delete
+            # t = time.perf_counter()  # TODO: delete
 
-            t = time.perf_counter()
-            logger.info("F5 infer started")  # TODO: delete
-            logger.info(
-                f"[{self._job_id}] infer ENTER | thread={threading.current_thread().name} | tts_id={id(self.tts)}"
-            )  # TODO: delete
-            logger.info(
-                f"[{self._job_id}] before infer: cuda_stream={torch.cuda.current_stream()}"
-            )  # TODO: delete
+            prepared_text = TextPreprocessor.prepare_generation_text(request.gen_text)
+
+            # logger.info(f"[{self._job_id}] prepare_generation_text {time.perf_counter() - t} sec")  # TODO: delete
+            # t = time.perf_counter()# TODO: delete
+            # logger.info("F5 infer started")  # TODO: delete
+            # logger.info(f"[{self._job_id}] infer ENTER | thread={threading.current_thread().name} | tts_id={id(self.tts)}")  # TODO: delete
+            # logger.info(f"[{self._job_id}] before infer: cuda_stream={torch.cuda.current_stream()}")  # TODO: delete
+
+            self._mem_check.snapshot("BEFORE F5 INFER")  # TODO: delete
+            self._mem_check.torch_snapshot("before infer")  # TODO: delete
 
             wav, sr, _ = self.tts.infer(
                 ref_file=str(ref_path),
@@ -150,36 +153,37 @@ class TTSModel:
                 seed=request.seed,
             )
 
-            logger.info(
-                f"[{self._job_id}] after infer: cuda_stream={torch.cuda.current_stream()}"
-            )  # TODO: delete
-            logger.info(
-                f"[{self._job_id}] infer EXIT | thread={threading.current_thread().name} | tts_id={id(self.tts)}"
-            )  # TODO: delete
-            logger.info(
-                f"[{self._job_id}] F5 infer finished {time.perf_counter() - t} sec"
-            )  # TODO: delete
+            self._mem_check.snapshot("AFTER F5 INFER")  # TODO: delete
+            self._mem_check.torch_snapshot("after infer")  # TODO: delete
+
+            # logger.info(f"[{self._job_id}] after infer: cuda_stream={torch.cuda.current_stream()}")  # TODO: delete
+            # logger.info(f"[{self._job_id}] infer EXIT | thread={threading.current_thread().name} | tts_id={id(self.tts)}")  # TODO: delete
+            # logger.info(f"[{self._job_id}] F5 infer finished {time.perf_counter() - t} sec")  # TODO: delete
         except Exception as ex:
+            ref_path.unlink(missing_ok=True)
             logger.exception(f"{type(ex)} {ex}")
             raise SynthesisException(str(ex))
-        finally:
-            ref_path.unlink(missing_ok=True)
 
-        generation_time = time.perf_counter() - started  # TODO: delete
+        generation_time = time.perf_counter() - started
         # result_duration = len(wav) / sr
 
         out_path = TempFiles.create_output()
 
-        t = time.perf_counter()  # TODO: delete
+        # t = time.perf_counter()  # TODO: delete
+
         sf.write(out_path, wav, sr)
-        logger.info(
-            f"[{self._job_id}] wav saved in {time.perf_counter() - t} sec"
-        )  # TODO: delete
+
+        self._mem_check.snapshot("AFTER WAV WRITE")  # TODO: delete
+        del wav  # TODO: delete
+        gc.collect()  # TODO: delete
+        self._mem_check.snapshot("AFTER WAV DEL+GC")  # TODO: delete
+        # logger.info(f"[{self._job_id}] wav saved in {time.perf_counter() - t} sec")  # TODO: delete
 
         stretch_ratio = 1.0
 
         result_duration = AudioProcessor.duration(out_path)
 
+        self._mem_check.snapshot("END SYNTHESIZE ONCE")  # TODO: delete
         return SynthesisResultDTO(
             ref_path=ref_path,
             wav_path=out_path,
@@ -218,10 +222,10 @@ class TTSModel:
         result: SynthesisResultDTO,
         request: TTSRequestDTO,
         score: float,
-        best_result: Optional[SynthesisResultDTO],
-        best_request: Optional[TTSRequestDTO],
+        best_result: SynthesisResultDTO | None,
+        best_request: TTSRequestDTO | None,
         best_score: float,
-    ) -> tuple[Optional[SynthesisResultDTO], Optional[TTSRequestDTO], float]:
+    ) -> tuple[SynthesisResultDTO | None, TTSRequestDTO | None, float]:
 
         if score > best_score:
             if best_result is not None:
@@ -236,10 +240,10 @@ class TTSModel:
         self,
         request: TTSRequestDTO,
         attempt_history: list[AttemptDTO],
-        best_result: Optional[SynthesisResultDTO],
-        best_request: Optional[TTSRequestDTO],
+        best_result: SynthesisResultDTO | None,
+        best_request: TTSRequestDTO | None,
         best_score: float,
-        job_id: Optional[str] = None,
+        job_id: str | None = None,
     ) -> SynthesisResultDTO:
 
         assert best_result is not None
@@ -281,21 +285,22 @@ class TTSModel:
         self,
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
-        job_id: Optional[str] = None,
+        job_id: str | None = None,
     ) -> SynthesisResultDTO:
 
         if job_id:
             job_manager.update(job_id, status=JobStatus.PROGRESSING)
 
         attempt_history: list[AttemptDTO] = list()
-        best_result: Optional[SynthesisResultDTO] = None
-        best_request: Optional[TTSRequestDTO] = None
+        best_result: SynthesisResultDTO | None = None
+        best_request: TTSRequestDTO | None = None
         best_score = -1.0
 
         plan = GenerationPlanBuilder.build(request)
         request.max_attempts = plan.max_attempts
 
         for attempt, params in enumerate(plan.attempts, start=1):
+            self._mem_check.snapshot(f"ATTEMPT {attempt} START")  # TODO: delete
             attempt_start = time.perf_counter()
 
             # current_request = self._prepare_attempt_request(request, attempt)
@@ -331,9 +336,11 @@ class TTSModel:
                 best_score,
             )
 
-            logger.info(
-                f"[{job_id}] attempt {attempt} {time.perf_counter() - attempt_start} sec"
-            )  # TODO: delete
+            self._mem_check.snapshot(f"ATTEMPT {attempt} END")  # TODO: delete
+            gc.collect()
+            self._mem_check.snapshot(f"ATTEMPT {attempt} END+GC")  # TODO: delete
+
+            # logger.info(f"[{job_id}] attempt {attempt} {time.perf_counter() - attempt_start} sec")  # TODO: delete
             if score >= request.min_similarity:
                 logger.info(
                     f"Similarity threshold reached "
@@ -389,12 +396,12 @@ class TTSModel:
         self,
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
-        job_id: Optional[str] = None,
+        job_id: str | None = None,
     ) -> SynthesisResultDTO:
-        self._job_id = job_id
-
-        total_start = time.perf_counter()  # TODO: delete
-        logger.info(f"[{job_id}] synthesize entered")  # TODO: delete
+        # self._job_id = job_id # TODO: delete
+        # total_start = time.perf_counter()  # TODO: delete
+        # logger.info(f"[{job_id}] synthesize entered")  # TODO: delete
+        self._mem_check.snapshot(f"START synthesize with {job_id = }")  # TODO: delete
 
         if not request.verify_with_whisper:
             return self._synthesize_without_verification(
@@ -407,7 +414,6 @@ class TTSModel:
             job_id=job_id,
         )
 
-        logger.info(
-            f"[{job_id}] TOTAL synthesize {time.perf_counter() - total_start} sec"
-        )  # TODO: delete
+        self._mem_check.snapshot(f"END synthesize with {job_id = }")  # TODO: delete
+        # logger.info(f"[{job_id}] TOTAL synthesize {time.perf_counter() - total_start} sec")  # TODO: delete
         return result
