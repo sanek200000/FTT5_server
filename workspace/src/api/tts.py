@@ -13,7 +13,7 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from loguru import logger
 
-from src.config import SS
+from src.config import SS, mem_log
 from src.schemas.job import JobCreateResponseDTO, JobStatus, JobStatusResponseDTO
 from src.schemas.tts import TTSRequestDTO
 from src.schemas.tts_manager import CurrentModelResponseDTO, LoadModelRequestDTO
@@ -141,6 +141,7 @@ async def tts_endpoint(
     remove_silence=Form(False),
     match_duration=Form(False),
     seed: Optional[int] = Form(None),
+    job_count: Optional[int] = Form(None),
 ):
     try:
         tts_manager = tts_request.app.state.tts_manager
@@ -161,19 +162,21 @@ async def tts_endpoint(
         remove_silence=True,
         match_duration=True,
         seed=seed,
+        # verify_with_whisper=False,  # TODO: delete
     )
     logger.info(request.format_log())
 
-    start = time.perf_counter()
+    # start = time.perf_counter()  # TODO: delete
     job_id = job_manager.create_job()
-    logger.info(f"[{job_id}] HTTP request received")
+    # logger.info(f"[{job_id}] HTTP request received")  # TODO: delete
 
+    mem_log.info(f"JOB COUNT: {job_count}")
     start_job(
         job_id=job_id,
         tts=tts,
         request=request,
         ref_audio_bytes=await ref_audio.read(),
     )
-    logger.info(f"[{job_id}] job submitted in {time.perf_counter() - start} sec")
+    # logger.info(f"[{job_id}] job submitted in {time.perf_counter() - start} sec")  # TODO: delete
 
     return JobCreateResponseDTO(id=job_id)

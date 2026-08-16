@@ -1,6 +1,7 @@
 from threading import Thread
 import threading
 import time
+import gc
 
 from loguru import logger
 
@@ -8,6 +9,7 @@ from schemas.job import JobStatus
 from src.schemas.tts import TTSRequestDTO
 from src.services.tts import TTSModel
 from src.services.job import job_manager
+from src.utils.mem_test import MemoryCheck
 
 
 def _run_job(
@@ -18,6 +20,8 @@ def _run_job(
 ):
     # job_start = time.perf_counter()  # TODO: delete
     # logger.info(f"[{job_id}] job started")  # TODO: delete
+    mem_check = MemoryCheck()  # TODO: delete
+    mem_check.snapshot(f"JOB START | {job_id = }")  # TODO: delete
 
     try:
         # tts_start = time.perf_counter()  # TODO: delete
@@ -55,6 +59,11 @@ def _run_job(
             status=JobStatus.FAILED,
             error=detail,
         )
+    finally:
+        mem_check.snapshot(f"JOB END | {job_id = }")  # TODO: delete
+        gc.collect()
+        mem_check.snapshot(f"JOB END+GC | {job_id = }")  # TODO: delete
+        mem_check.log_large_objects()
 
 
 def start_job(

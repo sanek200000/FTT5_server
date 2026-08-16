@@ -144,7 +144,7 @@ class TTSModel:
             self._mem_check.snapshot("BEFORE F5 INFER")  # TODO: delete
             self._mem_check.torch_snapshot("before infer")  # TODO: delete
 
-            wav, sr, _ = self.tts.infer(
+            wav, sr, spec = self.tts.infer(
                 ref_file=str(ref_path),
                 ref_text=request.ref_text,
                 gen_text=prepared_text,
@@ -153,8 +153,8 @@ class TTSModel:
                 seed=request.seed,
             )
 
-            self._mem_check.snapshot("AFTER F5 INFER")  # TODO: delete
-            self._mem_check.torch_snapshot("after infer")  # TODO: delete
+            self._mem_check.log_array("F5 wav", wav)  # TODO: delete
+            self._mem_check.log_array("F5 spec", spec)  # TODO: delete
 
             # logger.info(f"[{self._job_id}] after infer: cuda_stream={torch.cuda.current_stream()}")  # TODO: delete
             # logger.info(f"[{self._job_id}] infer EXIT | thread={threading.current_thread().name} | tts_id={id(self.tts)}")  # TODO: delete
@@ -163,6 +163,9 @@ class TTSModel:
             ref_path.unlink(missing_ok=True)
             logger.exception(f"{type(ex)} {ex}")
             raise SynthesisException(str(ex))
+        finally:
+            self._mem_check.snapshot("AFTER F5 INFER")  # TODO: delete
+            self._mem_check.torch_snapshot("after infer")  # TODO: delete
 
         generation_time = time.perf_counter() - started
         # result_duration = len(wav) / sr
@@ -174,16 +177,22 @@ class TTSModel:
         sf.write(out_path, wav, sr)
 
         self._mem_check.snapshot("AFTER WAV WRITE")  # TODO: delete
+        self._mem_check.log_array("F5 wav BEFORE DEL", wav)  # TODO: delete
         del wav  # TODO: delete
+        del spec  # TODO: delete
         gc.collect()  # TODO: delete
         self._mem_check.snapshot("AFTER WAV DEL+GC")  # TODO: delete
         # logger.info(f"[{self._job_id}] wav saved in {time.perf_counter() - t} sec")  # TODO: delete
 
         stretch_ratio = 1.0
 
+        self._mem_check.snapshot("BEFORE AUDIO DURATION")  # TODO: delete
+
         result_duration = AudioProcessor.duration(out_path)
 
+        self._mem_check.snapshot("AFTER AUDIO DURATION")  # TODO: delete
         self._mem_check.snapshot("END SYNTHESIZE ONCE")  # TODO: delete
+
         return SynthesisResultDTO(
             ref_path=ref_path,
             wav_path=out_path,
@@ -349,10 +358,15 @@ class TTSModel:
 
                 # --------------------------------------------
                 if request.match_duration:
+                    self._mem_check.snapshot(f"BEFORE ADJUST PAUSES")  # TODO: delete
+
                     adjusted_path = AudioProcessor.adjust_pauses(
                         reference_wav=result.ref_path,
                         generated_wav=result.wav_path,
                     )
+
+                    self._mem_check.snapshot(f"AFTER ADJUST PAUSES")  # TODO: delete
+
                     result.wav_path.unlink(missing_ok=True)
                     result.wav_path = adjusted_path
                 # --------------------------------------------
@@ -383,11 +397,22 @@ class TTSModel:
         self,
         request: TTSRequestDTO,
         ref_audio_bytes: bytes,
+        job_id: str | None = None,
     ) -> SynthesisResultDTO:
+        if job_id:
+            job_manager.update(job_id, status=JobStatus.PROGRESSING)
+
         result = self._synthesize_once(
             request=request,
             ref_audio_bytes=ref_audio_bytes,
         )
+
+        if job_id:
+            job_manager.update(
+                job_id,
+                status=JobStatus.COMPLETED,
+                # similarity=score,
+            )
 
         logger.info(result.format_log(request))
         return result
@@ -405,7 +430,9 @@ class TTSModel:
 
         if not request.verify_with_whisper:
             return self._synthesize_without_verification(
-                request=request, ref_audio_bytes=ref_audio_bytes
+                request=request,
+                ref_audio_bytes=ref_audio_bytes,
+                job_id=job_id,
             )
 
         result = self._synthesize_with_verification(

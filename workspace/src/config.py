@@ -42,10 +42,20 @@ DEVICE = SS.COMPOSE_PROFILES
 
 
 def should_rotate_on_start(message, file):
-    if not hasattr(should_rotate_on_start, "has_run"):
-        should_rotate_on_start.has_run = True
+    if not hasattr(should_rotate_on_start, "rotated_files"):
+        should_rotate_on_start.rotated_files = set()
+
+    file_name = file.name
+
+    if file_name not in should_rotate_on_start.rotated_files:
+        should_rotate_on_start.rotated_files.add(file_name)
         return True
     return False
+
+    # if not hasattr(should_rotate_on_start, "has_run"):
+    #     should_rotate_on_start.has_run = True
+    #     return True
+    # return False
 
 
 logger.remove()
@@ -63,6 +73,7 @@ logger.add(
     filter=lambda record: record["extra"].get("name") == "special_log",
 )
 mem_log = logger.bind(name="special_log")
+mem_log.debug("new session")
 
 
 if __name__ == "__main__":

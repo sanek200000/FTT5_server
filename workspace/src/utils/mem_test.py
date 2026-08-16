@@ -1,6 +1,9 @@
 import os
+import sys
 import psutil
 import torch
+import gc
+import numpy as np
 # import tracemalloc
 
 from src.config import mem_log
@@ -10,6 +13,47 @@ from src.config import mem_log
 
 
 class MemoryCheck:
+    @staticmethod
+    def log_array(name, value):
+        if isinstance(value, np.ndarray):
+            mem_log.warning(
+                f"[MEMORY ARRAY] {name}: "
+                f"shape={value.shape} "
+                f"dtype={value.dtype} "
+                f"size={value.nbytes / 1024 / 1024:.1f} MB"
+            )
+
+    @staticmethod
+    def log_tesor(name, value):
+        if torch.is_tensor(value):
+            mem_log.warning(
+                f"[MEMORY TENSOR] {name}: "
+                f"shape={tuple(value.shape)} "
+                f"dtype={value.dtype} "
+                f"device={value.device} "
+                f"size={value.numel() * value.element_size() / 1024 / 1024:.1f} MB"
+            )
+
+    @staticmethod
+    def log_large_objects():
+        objects = gc.get_objects()
+        sizes = list()
+
+        for obj in objects:
+            try:
+                size = sys.getsizeof(obj)
+                if size >= 1 * 1024 * 1024:
+                    sizes.append((size, type(obj).__name__), id(obj))
+            except Exception:
+                pass
+
+        sizes.sort(reverse=True)
+
+        for size, type_name, id in sizes[:30]:
+            mem_log.warning(
+                f"[MEMORY OBJECTS] {type_name}: {id=} {size / 1024 / 1024:.1f} MB"
+            )
+
     @staticmethod
     def torch_snapshot(label: str):
         if torch.cuda.is_available():
@@ -51,27 +95,17 @@ class MemoryCheck:
             uss_mb = -1
             pss_mb = -1
 
-        python_mb = -1.0
-        python_peak_mb = -1.0
+        # try:
+        #     if tracemalloc.is_tracing():
+        #         current, peak = tracemalloc.get_traced_memory()
+        #         python_mb = current / 1024 / 1024
+        #         python_peak_mb = peak / 1024 / 1024
+        # except:
+        #     python_mb = -1
+        #     python_peak_mb = -1
 
-        try:
-            if tracemalloc.is_tracing():
-                current, peak = tracemalloc.get_traced_memory()
-                python_mb = current / 1024 / 1024
-                python_peak_mb = peak / 1024 / 1024
-        except:
-            python_mb = -1
-            python_peak_mb = -1
-
-        # cpu_alloc_mb = -1.0
-        cpu_reserved_mb = -1.0
         gpu_alloc_mb = -1.0
         gpu_reserved_mb = -1.0
-
-        # try:
-        #     cpu_alloc_mb = torch.memory_allocated("cpu") / 1024 / 1024
-        # except Exception as ex:
-        #     mem_log.error(f"{type(ex)}\t{ex}")
 
         if torch.cuda.is_available():
             try:
@@ -83,12 +117,10 @@ class MemoryCheck:
         mem_log.warning(
             f"[MEMORY] {label} | "
             f"rss={rss_mb:.1f} MB | "
-            # f"rss2={rss_mb2:.1f} MB | "
             f"uss={uss_mb:.1f} MB | "
             f"pss={pss_mb:.1f} MB | "
-            f"python={python_mb:.1f} MB | "
-            f"python_peak={python_peak_mb:.1f} MB | "
-            # f"torch_cpu={cpu_alloc_mb:.1f} MB | "
+            # f"python={python_mb:.1f} MB | "
+            # f"python_peak={python_peak_mb:.1f} MB | "
             f"cuda_alloc={gpu_alloc_mb:.1f} MB | "
             f"cuda_reserved={gpu_reserved_mb:.1f} MB"
         )
